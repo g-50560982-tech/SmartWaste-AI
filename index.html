@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SmartWaste AI ♻️</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #f4f4f4;
+      text-align: center;
+    }
+
+    h1 {
+      background: #2e7d32;
+      color: white;
+      margin: 0;
+      padding: 15px;
+    }
+
+    button {
+      padding: 10px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      background: #2e7d32;
+      color: white;
+      font-size: 14px;
+    }
+
+    video {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    #result {
+      font-size: 22px;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    .card {
+      background: white;
+      margin: 10px auto;
+      padding: 15px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 420px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>♻️ SmartWaste AI</h1>
+
+<div class="card">
+  <button onclick="init()">START CAMERA</button>
+  <button onclick="switchCamera()">SWITCH CAMERA 📷</button>
+</div>
+
+<div id="webcam-container"></div>
+
+<div class="card">
+  <div id="result">Waiting AI...</div>
+</div>
+
+<script>
+
+const URL = "./";
+
+let model;
+let video;
+let stream;
+let devices = [];
+let currentDeviceId = null;
+let lastLabel = "";
+
+let recycleSound = new Audio("recycle.mp3");
+let notRecycleSound = new Audio("not_recycle.mp3");
+
+// ================= INIT =================
+async function init() {
+
+  const modelURL = URL + "model.json";
+  const metadataURL = URL + "metadata.json";
+
+  model = await tmImage.load(modelURL, metadataURL);
+
+  await getCameras();
+  await startCamera();
+
+  loop();
+}
+
+// ================= GET CAMERA LIST =================
+async function getCameras() {
+  const allDevices = await navigator.mediaDevices.enumerateDevices();
+  devices = allDevices.filter(d => d.kind === "videoinput");
+}
+
+// ================= START CAMERA =================
+async function startCamera(deviceId = null) {
+
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+
+  let constraints = {
+    video: deviceId
+      ? { deviceId: { exact: deviceId } }
+      : { facingMode: "environment" }
+  };
+
+  stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+  video = document.createElement("video");
+  video.autoplay = true;
+  video.playsInline = true;
+  video.srcObject = stream;
+
+  document.getElementById("webcam-container").innerHTML = "";
+  document.getElementById("webcam-container").appendChild(video);
+}
+
+// ================= SWITCH CAMERA =================
+async function switchCamera() {
+
+  if (devices.length === 0) await getCameras();
+
+  let index = devices.findIndex(d => d.deviceId === currentDeviceId);
+  let nextIndex = (index + 1) % devices.length;
+
+  currentDeviceId = devices[nextIndex].deviceId;
+
+  await startCamera(currentDeviceId);
+}
+
+// ================= LOOP =================
+function loop() {
+  requestAnimationFrame(loop);
+  predict();
+}
+
+// ================= AI PREDICTION =================
+async function predict() {
+
+  if (!video || video.readyState !== 4) return;
+
+  const prediction = await model.predict(video);
+
+  let highest = prediction[0];
+
+  for (let i = 1; i < prediction.length; i++) {
+    if (prediction[i].probability > highest.probability) {
+      highest = prediction[i];
+    }
+  }
+
+  let percent = (highest.probability * 100).toFixed(2);
+
+  document.getElementById("result").innerHTML =
+    "♻️ " + highest.className + " : " + percent + "%";
+
+  // SOUND ALERT
+  if (highest.className !== lastLabel) {
+
+    if (highest.className.toLowerCase().includes("recycle")) {
+      recycleSound.play();
+    } else {
+      notRecycleSound.play();
+    }
+
+    lastLabel = highest.className;
+  }
+}
+
+</script>
+
+</body>
+</html>
