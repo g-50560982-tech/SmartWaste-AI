@@ -1,187 +1,157 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <title>SmartWaste AI ♻️</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<title>SmartWaste AI ♻️</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: #f4f4f4;
-      text-align: center;
-    }
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    h1 {
-      background: #2e7d32;
-      color: white;
-      margin: 0;
-      padding: 15px;
-    }
 
-    button {
-      padding: 10px;
-      margin: 5px;
-      border: none;
-      border-radius: 8px;
-      background: #2e7d32;
-      color: white;
-      font-size: 14px;
-    }
+<link rel="stylesheet" href="style.css">
 
-    video {
-      width: 100%;
-      max-width: 420px;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
 
-    #result {
-      font-size: 22px;
-      margin-top: 15px;
-      font-weight: bold;
-    }
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 
-    .card {
-      background: white;
-      margin: 10px auto;
-      padding: 15px;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 420px;
-    }
-  </style>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+
 </head>
+
 
 <body>
 
-<h1>♻️ SmartWaste AI</h1>
 
-<div class="card">
-  <button onclick="init()">START CAMERA</button>
-  <button onclick="switchCamera()">SWITCH CAMERA 📷</button>
+<div class="app">
+
+
+<header>
+
+<div class="logo">
+♻️
 </div>
 
-<div id="webcam-container"></div>
+<h1>
+SMARTWASTE AI
+</h1>
 
-<div class="card">
-  <div id="result">Waiting AI...</div>
+<p>
+Smart Plastic & Paper Detection
+</p>
+
+<small>
+Powered by Artificial Intelligence
+</small>
+
+</header>
+
+
+
+<div class="status">
+
+<span id="statusIcon">
+🟡
+</span>
+
+<span id="statusText">
+Ready to Scan
+</span>
+
 </div>
 
-<script>
 
-const URL = "./";
 
-let model;
-let video;
-let stream;
-let devices = [];
-let currentDeviceId = null;
-let lastLabel = "";
 
-let recycleSound = new Audio("recycle.mp3");
-let notRecycleSound = new Audio("not_recycle.mp3");
+<div class="card">
 
-// ================= INIT =================
-async function init() {
+<button onclick="init()">
 
-  const modelURL = URL + "model.json";
-  const metadataURL = URL + "metadata.json";
+🚀 START AI SCANNER
 
-  model = await tmImage.load(modelURL, metadataURL);
+</button>
 
-  await getCameras();
-  await startCamera();
 
-  loop();
-}
+<button onclick="switchCamera()">
 
-// ================= GET CAMERA LIST =================
-async function getCameras() {
-  const allDevices = await navigator.mediaDevices.enumerateDevices();
-  devices = allDevices.filter(d => d.kind === "videoinput");
-}
+📷 SWITCH CAMERA
 
-// ================= START CAMERA =================
-async function startCamera(deviceId = null) {
+</button>
 
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
+</div>
 
-  let constraints = {
-    video: deviceId
-      ? { deviceId: { exact: deviceId } }
-      : { facingMode: "environment" }
-  };
 
-  stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-  video = document.createElement("video");
-  video.autoplay = true;
-  video.playsInline = true;
-  video.srcObject = stream;
 
-  document.getElementById("webcam-container").innerHTML = "";
-  document.getElementById("webcam-container").appendChild(video);
-}
+<div class="camera-card">
 
-// ================= SWITCH CAMERA =================
-async function switchCamera() {
+<div id="webcam-container">
 
-  if (devices.length === 0) await getCameras();
+</div>
 
-  let index = devices.findIndex(d => d.deviceId === currentDeviceId);
-  let nextIndex = (index + 1) % devices.length;
+</div>
 
-  currentDeviceId = devices[nextIndex].deviceId;
 
-  await startCamera(currentDeviceId);
-}
 
-// ================= LOOP =================
-function loop() {
-  requestAnimationFrame(loop);
-  predict();
-}
 
-// ================= AI PREDICTION =================
-async function predict() {
 
-  if (!video || video.readyState !== 4) return;
+<div class="result-card">
 
-  const prediction = await model.predict(video);
 
-  let highest = prediction[0];
+<div id="wasteIcon">
 
-  for (let i = 1; i < prediction.length; i++) {
-    if (prediction[i].probability > highest.probability) {
-      highest = prediction[i];
-    }
-  }
+♻️
 
-  let percent = (highest.probability * 100).toFixed(2);
+</div>
 
-  document.getElementById("result").innerHTML =
-    "♻️ " + highest.className + " : " + percent + "%";
 
-  // SOUND ALERT
-  if (highest.className !== lastLabel) {
+<h2 id="result">
 
-    if (highest.className.toLowerCase().includes("recycle")) {
-      recycleSound.play();
-    } else {
-      notRecycleSound.play();
-    }
+Waiting AI...
 
-    lastLabel = highest.className;
-  }
-}
+</h2>
 
-</script>
+
+<div class="bar">
+
+<div id="confidenceBar">
+
+</div>
+
+</div>
+
+
+<p id="confidence">
+
+Confidence: 0%
+
+</p>
+
+
+
+</div>
+
+
+
+
+<footer>
+
+🌱 Smart Waste Management Education Project
+
+<br>
+
+SDG 12 • Responsible Consumption
+
+</footer>
+
+
+
+</div>
+
+
+
+<script src="script.js"></script>
+
 
 </body>
+
 </html>

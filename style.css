@@ -1,0 +1,365 @@
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+
+    margin: 0;
+    min-height: 100vh;
+
+    font-family: "Segoe UI", Arial, sans-serif;
+
+    background:
+    linear-gradient(
+        135deg,
+        #d8f3dc,
+        #95d5b2
+    );
+
+    text-align: center;
+
+    color: #1b4332;
+
+}
+
+
+
+.app {
+
+    width: 100%;
+    max-width: 500px;
+
+    margin: auto;
+
+    padding: 20px;
+
+}
+
+
+
+
+header {
+
+    background: rgba(255,255,255,0.35);
+
+    backdrop-filter: blur(15px);
+
+    border-radius: 25px;
+
+    padding: 20px;
+
+    box-shadow:
+    0 8px 30px rgba(0,0,0,0.15);
+
+}
+
+
+
+.logo {
+
+    font-size: 55px;
+
+}
+
+
+
+h1 {
+
+    margin: 5px;
+
+    font-size: 32px;
+
+    color: #2d6a4f;
+
+}
+
+
+
+header p {
+
+    margin: 5px;
+
+    font-size: 16px;
+
+}
+
+
+
+header small {
+
+    color: #555;
+
+}
+
+
+
+
+
+.status {
+
+
+    margin: 20px auto;
+
+    padding: 12px;
+
+
+    background:
+    rgba(255,255,255,0.5);
+
+
+    border-radius: 30px;
+
+
+    width: 80%;
+
+
+    font-weight: bold;
+
+
+    box-shadow:
+    0 5px 20px rgba(0,0,0,0.1);
+
+}
+
+
+
+
+
+.card,
+.result-card,
+.camera-card {
+
+
+    background:
+    rgba(255,255,255,0.45);
+
+
+    backdrop-filter:
+    blur(15px);
+
+
+    border-radius: 25px;
+
+
+    padding: 20px;
+
+
+    margin: 15px auto;
+
+
+    box-shadow:
+    0 8px 25px rgba(0,0,0,0.15);
+
+
+}
+
+
+
+
+
+button {
+
+
+    width: 90%;
+
+
+    padding: 15px;
+
+
+    margin: 8px;
+
+
+    border: none;
+
+
+    border-radius: 30px;
+
+
+    background:
+
+    linear-gradient(
+    135deg,
+    #2d6a4f,
+    #40916c
+    );
+
+
+    color:white;
+
+
+    font-size:16px;
+
+
+    font-weight:bold;
+
+
+    cursor:pointer;
+
+
+}
+
+
+
+
+
+button:active {
+
+
+    transform: scale(0.95);
+
+
+}
+
+
+
+
+
+
+video {
+
+
+    width:100%;
+
+
+    max-width:420px;
+
+
+    border-radius:20px;
+
+
+}
+
+
+
+
+
+
+#wasteIcon {
+
+
+    font-size:60px;
+
+
+    animation:
+    float 2s infinite;
+
+
+}
+
+
+
+@keyframes float {
+
+
+    50% {
+
+        transform:translateY(-8px);
+
+    }
+
+}
+
+
+
+
+
+
+#result {
+
+
+    color:#2d6a4f;
+
+}
+
+
+
+
+
+.bar {
+
+
+    width:100%;
+
+
+    height:20px;
+
+
+    background:#ddd;
+
+
+    border-radius:20px;
+
+
+    overflow:hidden;
+
+
+}
+
+
+
+
+
+#confidenceBar {
+
+
+    height:100%;
+
+
+    width:0%;
+
+
+    background:
+
+    linear-gradient(
+    90deg,
+    #52b788,
+    #1b4332
+    );
+
+
+    transition:0.5s;
+
+
+}
+
+
+
+
+
+
+footer {
+
+
+    margin-top:25px;
+
+
+    font-size:13px;
+
+
+    color:#555;
+
+
+}
+
+
+
+
+@media(max-width:400px){
+
+
+h1{
+
+font-size:25px;
+
+}
+
+
+.logo{
+
+font-size:45px;
+
+}
+
+
+}
