@@ -1,1634 +1,1667 @@
 /* =========================================================
    SMARTWASTE AI
-   SCRIPT
-========================================================= */
-
-
-/* =========================================================
-   MODEL AI
-========================================================= */
+   Teachable Machine + Direct Camera Access
+   4 Classes:
+   Paper / Kertas
+   Plastic / Plastik
+   Tin Aluminium / Metal / Logam
+   Glass / Kaca
+   ========================================================= */
 
 const MODEL_PATH = "./model/";
 
 let model = null;
-let webcam = null;
-
-let cameraStarted = false;
-
+let video = null;
+let cameraStream = null;
+let cameraRunning = false;
 let facingMode = "environment";
-
-let lastPrediction = null;
-
-
-/* =========================================================
-   ECO POINTS
-========================================================= */
-
-let ecoPoints =
-  Number(localStorage.getItem("smartwaste-points")) || 0;
-
+let lastPredictions = [];
 let scannerPointGiven = false;
 
+let gameScore = 0;
+let currentQuestion = 0;
+let gameStarted = false;
+
 
 /* =========================================================
-   PAGE NAVIGATION
-========================================================= */
+   DOM ELEMENTS
+   ========================================================= */
 
-const sections =
-  document.querySelectorAll(".page-section");
+const $ = (id) => document.getElementById(id);
 
-const navButtons =
-  document.querySelectorAll(".nav-btn");
+const startCameraBtn = $("startCameraBtn");
+const scanBtn = $("scanBtn");
+const switchCameraBtn = $("switchCameraBtn");
 
+const webcamContainer = $("webcam-container");
+const cameraPlaceholder = $("cameraPlaceholder");
 
-function showSection(sectionId) {
+const scannerResult = $("scannerResult");
+const predictionLabel = $("predictionLabel");
+const binRecommendation = $("binRecommendation");
+const confidenceText = $("confidenceText");
+const confidenceFill = $("confidenceFill");
+const smartTip = $("smartTip");
+const scannerPoints = $("scannerPoints");
+const scannerError = $("scannerError");
 
-  sections.forEach(section => {
-
-    section.classList.remove(
-      "active-section"
-    );
-
-  });
-
-
-  const target =
-    document.getElementById(sectionId);
-
-  if (target) {
-
-    target.classList.add(
-      "active-section"
-    );
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-
-  }
+const gameStart = $("gameStart");
+const gamePlay = $("gamePlay");
+const gameResult = $("gameResult");
 
 
-  navButtons.forEach(button => {
+/* =========================================================
+   STARTUP
+   ========================================================= */
 
-    button.classList.toggle(
-      "active",
-      button.dataset.section === sectionId
-    );
+document.addEventListener("DOMContentLoaded", () => {
 
-  });
-
-}
-
-
-navButtons.forEach(button => {
-
-  button.addEventListener(
-    "click",
-    () => {
-
-      showSection(
-        button.dataset.section
-      );
-
-    }
-  );
+    updateEcoDisplay();
+    loadTheme();
+    setupNavigation();
+    setupThemeToggle();
+    setupBinCards();
+    setupGame();
 
 });
 
 
-document
-  .querySelectorAll("[data-go]")
-  .forEach(button => {
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
 
-    button.addEventListener(
-      "click",
-      () => {
+function setupNavigation() {
 
-        showSection(
-          button.dataset.go
+    const navButtons = document.querySelectorAll("[data-section]");
+
+    navButtons.forEach(button => {
+
+        button.addEventListener("click", () => {
+
+            const sectionId = button.dataset.section;
+            const section = $(sectionId);
+
+            if (section) {
+                section.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            }
+
+        });
+
+    });
+
+}
+
+
+/* =========================================================
+   THEME / DARK MODE
+   ========================================================= */
+
+function setupThemeToggle() {
+
+    const themeToggle = $("themeToggle");
+
+    if (!themeToggle) return;
+
+    themeToggle.addEventListener("click", () => {
+
+        document.body.classList.toggle("dark");
+
+        const isDark = document.body.classList.contains("dark");
+
+        localStorage.setItem(
+            "smartwaste-theme",
+            isDark ? "dark" : "light"
         );
 
-      }
-    );
+    });
 
-  });
+}
+
+
+function loadTheme() {
+
+    const savedTheme =
+        localStorage.getItem("smartwaste-theme");
+
+    if (savedTheme === "dark") {
+        document.body.classList.add("dark");
+    }
+
+}
 
 
 /* =========================================================
    ECO POINTS
-========================================================= */
+   ========================================================= */
 
-function saveEcoPoints() {
+function getEcoPoints() {
 
-  localStorage.setItem(
-    "smartwaste-points",
-    ecoPoints
-  );
+    return Number(
+        localStorage.getItem("smartwaste-points") || 0
+    );
 
-  updateEcoDisplay();
+}
+
+
+function setEcoPoints(points) {
+
+    localStorage.setItem(
+        "smartwaste-points",
+        points
+    );
+
+    updateEcoDisplay();
 
 }
 
 
 function addEcoPoints(points) {
 
-  ecoPoints += points;
+    const current = getEcoPoints();
 
-  saveEcoPoints();
+    setEcoPoints(current + points);
 
 }
 
 
 function updateEcoDisplay() {
 
-  const homePoints =
-    document.getElementById("homePoints");
+    const points = getEcoPoints();
 
-  if (homePoints) {
+    const elements = [
+        $("ecoPoints"),
+        $("totalEcoPoints"),
+        $("homeEcoPoints"),
+        $("scannerEcoPoints"),
+        $("gameEcoPoints")
+    ];
 
-    homePoints.textContent =
-      ecoPoints;
+    elements.forEach(element => {
 
-  }
+        if (element) {
+            element.textContent = points;
+        }
 
-
-  const homeRank =
-    document.getElementById("homeRank");
-
-  if (homeRank) {
-
-    homeRank.textContent =
-      getRankShort(ecoPoints);
-
-  }
-
-
-  const gamePoints =
-    document.getElementById("gamePoints");
-
-  if (gamePoints) {
-
-    gamePoints.textContent =
-      gameScore;
-
-  }
+    });
 
 }
 
+
+/* =========================================================
+   ECO RANK
+   ========================================================= */
 
 function getRank(points) {
 
-  if (points >= 130) {
-
-    return "🏆 ECO HERO";
-
-  }
-
-  if (points >= 100) {
-
-    return "🌍 ECO CHAMPION";
-
-  }
-
-  if (points >= 60) {
-
-    return "♻️ ECO LEARNER";
-
-  }
-
-  return "🌱 ECO BEGINNER";
-
-}
-
-
-function getRankShort(points) {
-
-  if (points >= 130) return "🏆";
-
-  if (points >= 100) return "🌍";
-
-  if (points >= 60) return "♻️";
-
-  return "🌱";
-
-}
-
-
-/* =========================================================
-   THEME
-========================================================= */
-
-const themeToggle =
-  document.getElementById(
-    "themeToggle"
-  );
-
-const savedTheme =
-  localStorage.getItem(
-    "smartwaste-theme"
-  );
-
-
-if (savedTheme === "dark") {
-
-  document.body.classList.add("dark");
-
-  themeToggle.textContent = "☀️";
-
-}
-
-
-themeToggle.addEventListener(
-  "click",
-  () => {
-
-    document.body.classList.toggle(
-      "dark"
-    );
-
-    const dark =
-      document.body.classList.contains(
-        "dark"
-      );
-
-    localStorage.setItem(
-      "smartwaste-theme",
-      dark ? "dark" : "light"
-    );
-
-    themeToggle.textContent =
-      dark ? "☀️" : "🌙";
-
-  }
-);
-
-
-/* =========================================================
-   BIN INFORMATION
-========================================================= */
-
-const binData = {
-
-  paper: {
-
-    title:
-      "🔵 Tong Biru — Kertas",
-
-    text:
-      "Tong biru digunakan untuk bahan berasaskan kertas yang sesuai dikitar semula.",
-
-    examples: [
-      "📄 Surat khabar",
-      "📚 Majalah",
-      "📃 Kertas",
-      "📦 Kotak kertas"
-    ]
-
-  },
-
-
-  orange: {
-
-    title:
-      "🟧 Tong Oren — Plastik & Logam",
-
-    text:
-      "Tong oren digunakan untuk bahan plastik serta logam seperti tin keluli dan tin aluminium.",
-
-    examples: [
-      "🧴 Botol plastik",
-      "🥤 Bekas plastik",
-      "🥫 Tin aluminium",
-      "🥫 Tin keluli"
-    ]
-
-  },
-
-
-  glass: {
-
-    title:
-      "🟫 Tong Coklat — Kaca",
-
-    text:
-      "Tong coklat digunakan untuk bahan kaca yang sesuai dikitar semula.",
-
-    examples: [
-      "🍾 Botol kaca",
-      "🫙 Bekas kaca",
-      "🥛 Bekas kaca"
-    ]
-
-  }
-
-};
-
-
-document
-  .querySelectorAll(".bin-card")
-  .forEach(card => {
-
-    card.addEventListener(
-      "click",
-      () => {
-
-        const type =
-          card.dataset.bin;
-
-        const data =
-          binData[type];
-
-        if (!data) return;
-
-        document.getElementById(
-          "binInfoTitle"
-        ).textContent = data.title;
-
-        document.getElementById(
-          "binInfoText"
-        ).textContent = data.text;
-
-
-        const examples =
-          document.getElementById(
-            "binExamples"
-          );
-
-        examples.innerHTML = "";
-
-        data.examples.forEach(item => {
-
-          const span =
-            document.createElement(
-              "span"
-            );
-
-          span.textContent = item;
-
-          examples.appendChild(span);
-
-        });
-
-
-        document
-          .getElementById("binInfo")
-          .classList.remove("hidden");
-
-      }
-    );
-
-  });
-
-
-document
-  .getElementById("closeBinInfo")
-  .addEventListener(
-    "click",
-    () => {
-
-      document
-        .getElementById("binInfo")
-        .classList.add("hidden");
-
+    if (points >= 130) {
+        return "🏆 Eco Hero";
     }
-  );
 
+    if (points >= 100) {
+        return "🌍 Eco Champion";
+    }
 
-/* =========================================================
-   WASTE GAME
-========================================================= */
+    if (points >= 60) {
+        return "♻️ Eco Learner";
+    }
 
-const questions = [
-
-  {
-    level: "🟢 LEVEL 1 — EASY",
-
-    question:
-      "🧴 Botol plastik perlu dimasukkan ke tong mana?",
-
-    options: [
-      "🔵 Biru",
-      "🟧 Oren",
-      "🟫 Coklat",
-      "Tidak pasti"
-    ],
-
-    answer: 1,
-
-    tip:
-      "Plastik boleh diasingkan untuk dikitar semula."
-
-  },
-
-
-  {
-    level: "🟢 LEVEL 1 — EASY",
-
-    question:
-      "📄 Surat khabar perlu dimasukkan ke tong mana?",
-
-    options: [
-      "🟧 Oren",
-      "🔵 Biru",
-      "🟫 Coklat",
-      "Tidak pasti"
-    ],
-
-    answer: 1,
-
-    tip:
-      "Surat khabar ialah bahan kertas."
-
-  },
-
-
-  {
-    level: "🟢 LEVEL 1 — EASY",
-
-    question:
-      "🍾 Botol kaca perlu dimasukkan ke tong mana?",
-
-    options: [
-      "🟫 Coklat",
-      "🔵 Biru",
-      "🟧 Oren",
-      "Tidak pasti"
-    ],
-
-    answer: 0,
-
-    tip:
-      "Kaca boleh dikumpulkan untuk proses kitar semula."
-
-  },
-
-
-  {
-    level: "🟢 LEVEL 1 — EASY",
-
-    question:
-      "🥫 Tin minuman aluminium perlu dimasukkan ke tong mana?",
-
-    options: [
-      "🔵 Biru",
-      "🟫 Coklat",
-      "🟧 Oren",
-      "Tidak pasti"
-    ],
-
-    answer: 2,
-
-    tip:
-      "Tin aluminium ialah bahan logam."
-
-  },
-
-
-  {
-    level: "🟢 LEVEL 1 — EASY",
-
-    question:
-      "Antara berikut, yang manakah sisa kertas?",
-
-    options: [
-      "🧴 Botol plastik",
-      "📄 Surat khabar",
-      "🍾 Botol kaca",
-      "🥫 Tin aluminium"
-    ],
-
-    answer: 1,
-
-    tip:
-      "Surat khabar diperbuat daripada kertas."
-
-  },
-
-
-  {
-    level: "🟡 LEVEL 2 — MEDIUM",
-
-    question:
-      "Apakah tujuan utama pengasingan sisa?",
-
-    options: [
-      "Menambah sampah",
-      "Memudahkan kitar semula",
-      "Membakar semua sampah",
-      "Mencampurkan semua sisa"
-    ],
-
-    answer: 1,
-
-    tip:
-      "Pengasingan membantu bahan yang sesuai dikitar semula diproses dengan lebih mudah."
-
-  },
-
-
-  {
-    level: "🟡 LEVEL 2 — MEDIUM",
-
-    question:
-      "Apakah yang patut dilakukan sebelum memasukkan bahan kitar semula ke dalam tong?",
-
-    options: [
-      "Buang merata-rata",
-      "Campurkan dengan sisa makanan",
-      "Asingkan mengikut jenis",
-      "Bakar"
-    ],
-
-    answer: 2,
-
-    tip:
-      "Asingkan sisa mengikut jenis supaya lebih mudah diurus."
-
-  },
-
-
-  {
-    level: "🟡 LEVEL 2 — MEDIUM",
-
-    question:
-      "Tin minuman biasanya diperbuat daripada bahan apa?",
-
-    options: [
-      "Kertas",
-      "Kaca",
-      "Aluminium",
-      "Kayu"
-    ],
-
-    answer: 2,
-
-    tip:
-      "Banyak tin minuman diperbuat daripada aluminium."
-
-  },
-
-
-  {
-    level: "🟡 LEVEL 2 — MEDIUM",
-
-    question:
-      "Mengapakah kita perlu mengurangkan pembaziran?",
-
-    options: [
-      "Untuk menghasilkan lebih banyak sampah",
-      "Untuk menjaga alam sekitar",
-      "Untuk memenuhi tong sampah",
-      "Untuk membazirkan sumber"
-    ],
-
-    answer: 1,
-
-    tip:
-      "Mengurangkan pembaziran membantu menjimatkan sumber dan menjaga alam sekitar."
-
-  },
-
-
-  {
-    level: "🟡 LEVEL 2 — MEDIUM",
-
-    question:
-      "Botol kaca yang telah digunakan boleh...", 
-
-    options: [
-      "Dikitar semula",
-      "Dibuang ke sungai",
-      "Dibakar",
-      "Dibiarkan di jalan"
-    ],
-
-    answer: 0,
-
-    tip:
-      "Kaca tertentu boleh dikitar semula."
-
-  },
-
-
-  {
-    level: "🔴 LEVEL 3 — CHALLENGE",
-
-    question:
-      "Ali mempunyai botol plastik, surat khabar dan botol kaca. Apakah pengasingan yang betul?",
-
-    options: [
-      "Semua ke tong oren",
-      "Plastik & surat khabar ke tong biru",
-      "Plastik → 🟧, Kertas → 🔵, Kaca → 🟫",
-      "Semua ke tong coklat"
-    ],
-
-    answer: 2,
-
-    tip:
-      "Kenal pasti bahan dahulu sebelum memilih tong."
-
-  },
-
-
-  {
-    level: "🔴 LEVEL 3 — CHALLENGE",
-
-    question:
-      "Apakah tindakan paling baik apabila kita tidak pasti jenis sisa?",
-
-    options: [
-      "Buang sahaja",
-      "Campurkan dengan sisa lain",
-      "Kenal pasti jenis sisa terlebih dahulu",
-      "Bakar sisa tersebut"
-    ],
-
-    answer: 2,
-
-    tip:
-      "Jangan teka. Kenal pasti jenis bahan terlebih dahulu."
-
-  },
-
-
-  {
-    level: "🔴 LEVEL 3 — CHALLENGE",
-
-    question:
-      "Bagaimanakah AI membantu SmartWaste AI?",
-
-    options: [
-      "Menghasilkan sampah",
-      "Mengenal pasti jenis sisa melalui imej",
-      "Membakar sisa",
-      "Mengutip sampah secara automatik"
-    ],
-
-    answer: 1,
-
-    tip:
-      "AI menggunakan model yang dilatih untuk mengenali kategori sisa melalui imej."
-
-  },
-
-
-  {
-    level: "🔴 LEVEL 3 — CHALLENGE",
-
-    question:
-      "Apakah kaitan SmartWaste AI dengan SDG 12?",
-
-    options: [
-      "Menggalakkan pembaziran",
-      "Menggalakkan penggunaan dan pengeluaran yang bertanggungjawab",
-      "Menggalakkan pencemaran",
-      "Menggalakkan pembuangan sampah"
-    ],
-
-    answer: 1,
-
-    tip:
-      "SDG 12 berkaitan penggunaan dan pengeluaran yang bertanggungjawab."
-
-  },
-
-
-  {
-    level: "🏆 FINAL CHALLENGE",
-
-    question:
-      "Kamu nampak tiga objek: 🧴 botol plastik, 🥫 tin aluminium dan 🍾 botol kaca. Apakah susunan yang betul?",
-
-    options: [
-      "🟧 Oren → 🟧 Oren → 🟫 Coklat",
-      "🔵 Biru → 🟧 Oren → 🟫 Coklat",
-      "🟫 Coklat → 🔵 Biru → 🟧 Oren",
-      "🔵 Biru → 🔵 Biru → 🔵 Biru"
-    ],
-
-    answer: 0,
-
-    tip:
-      "Plastik dan logam → Oren. Kaca → Coklat."
-
-  }
-
-];
-
-
-let currentQuestion = 0;
-
-let gameScore = 0;
-
-let correctAnswers = 0;
-
-let answered = false;
-
-
-const gameStart =
-  document.getElementById(
-    "gameStart"
-  );
-
-const gamePlay =
-  document.getElementById(
-    "gamePlay"
-  );
-
-const gameResult =
-  document.getElementById(
-    "gameResult"
-  );
-
-
-document
-  .getElementById("startGameBtn")
-  .addEventListener(
-    "click",
-    startGame
-  );
-
-
-function startGame() {
-
-  currentQuestion = 0;
-
-  gameScore = 0;
-
-  correctAnswers = 0;
-
-  answered = false;
-
-
-  gameStart.classList.add(
-    "hidden"
-  );
-
-  gameResult.classList.add(
-    "hidden"
-  );
-
-  gamePlay.classList.remove(
-    "hidden"
-  );
-
-  updateEcoDisplay();
-
-  loadQuestion();
+    return "🌱 Eco Beginner";
 
 }
 
 
-function loadQuestion() {
+/* =========================================================
+   LOAD TEACHABLE MACHINE MODEL
+   ========================================================= */
 
-  answered = false;
+async function loadModel() {
 
-  const q =
-    questions[currentQuestion];
+    if (model) return true;
 
+    try {
 
-  document.getElementById(
-    "questionNumber"
-  ).textContent =
-    currentQuestion + 1;
+        scannerError.textContent =
+            "🧠 Memuatkan AI model...";
 
-
-  document.getElementById(
-    "gamePoints"
-  ).textContent =
-    gameScore;
-
-
-  document.getElementById(
-    "levelBadge"
-  ).textContent =
-    q.level;
-
-
-  document.getElementById(
-    "questionText"
-  ).textContent =
-    q.question;
-
-
-  document.getElementById(
-    "questionProgress"
-  ).style.width =
-    `${((currentQuestion + 1) / questions.length) * 100}%`;
-
-
-  const options =
-    document.getElementById(
-      "answerOptions"
-    );
-
-  options.innerHTML = "";
-
-
-  q.options.forEach(
-    (option, index) => {
-
-      const button =
-        document.createElement(
-          "button"
+        model = await tmImage.load(
+            MODEL_PATH + "model.json",
+            MODEL_PATH + "metadata.json"
         );
 
-      button.className =
-        "answer-btn";
+        console.log("SmartWaste AI model loaded.");
 
-      button.textContent =
-        `${String.fromCharCode(65 + index)}. ${option}`;
+        scannerError.textContent = "";
 
+        return true;
 
-      button.addEventListener(
-        "click",
-        () => {
+    } catch (error) {
 
-          checkAnswer(
-            index,
-            button
-          );
+        console.error(error);
 
+        if (scannerError) {
+            scannerError.textContent =
+                "❌ Model AI tidak dapat dimuatkan. Sila semak folder model.";
         }
-      );
 
-
-      options.appendChild(button);
+        return false;
 
     }
-  );
-
-
-  document
-    .getElementById("gameFeedback")
-    .classList.add("hidden");
-
-}
-
-
-function checkAnswer(
-  selectedIndex,
-  selectedButton
-) {
-
-  if (answered) return;
-
-  answered = true;
-
-
-  const q =
-    questions[currentQuestion];
-
-  const buttons =
-    document.querySelectorAll(
-      ".answer-btn"
-    );
-
-
-  buttons.forEach(
-    button => {
-
-      button.disabled = true;
-
-    }
-  );
-
-
-  const correct =
-    selectedIndex === q.answer;
-
-
-  if (correct) {
-
-    gameScore += 10;
-
-    correctAnswers++;
-
-    addEcoPoints(10);
-
-    selectedButton.classList.add(
-      "correct"
-    );
-
-
-    document.getElementById(
-      "feedbackTitle"
-    ).textContent =
-      "✅ BETUL!";
-
-
-    document.getElementById(
-      "feedbackPoints"
-    ).textContent =
-      "+10 ECO POINTS";
-
-  } else {
-
-    selectedButton.classList.add(
-      "wrong"
-    );
-
-
-    buttons[q.answer].classList.add(
-      "correct"
-    );
-
-
-    document.getElementById(
-      "feedbackTitle"
-    ).textContent =
-      "❌ CUBA LAGI!";
-
-
-    document.getElementById(
-      "feedbackPoints"
-    ).textContent =
-      "0 POINT";
-
-  }
-
-
-  document.getElementById(
-    "feedbackText"
-  ).textContent =
-    q.options[q.answer];
-
-
-  document.getElementById(
-    "feedbackTip"
-  ).textContent =
-    `💡 Smart Tip: ${q.tip}`;
-
-
-  document
-    .getElementById("gameFeedback")
-    .classList.remove("hidden");
-
-
-  updateEcoDisplay();
-
-}
-
-
-document
-  .getElementById("nextQuestionBtn")
-  .addEventListener(
-    "click",
-    () => {
-
-      currentQuestion++;
-
-      if (
-        currentQuestion >=
-        questions.length
-      ) {
-
-        finishGame();
-
-      } else {
-
-        loadQuestion();
-
-      }
-
-    }
-  );
-
-
-function finishGame() {
-
-  gamePlay.classList.add(
-    "hidden"
-  );
-
-  gameResult.classList.remove(
-    "hidden"
-  );
-
-
-  document.getElementById(
-    "finalPoints"
-  ).textContent =
-    gameScore;
-
-
-  document.getElementById(
-    "correctCount"
-  ).textContent =
-    correctAnswers;
-
-
-  document.getElementById(
-    "ecoRank"
-  ).textContent =
-    getRank(gameScore);
-
-
-  let message = "";
-
-
-  if (gameScore >= 130) {
-
-    message =
-      "Hebat! Kamu menunjukkan kemahiran pengasingan sisa yang sangat baik.";
-
-  } else if (gameScore >= 100) {
-
-    message =
-      "Bagus! Teruskan amalan pengasingan sisa.";
-
-  } else if (gameScore >= 60) {
-
-    message =
-      "Bagus! Teruskan belajar dan cuba lagi.";
-
-  } else {
-
-    message =
-      "Teruskan mencuba. Setiap cabaran membantu kita belajar.";
-
-  }
-
-
-  document.getElementById(
-    "resultMessage"
-  ).textContent =
-    message;
-
-}
-
-
-document
-  .getElementById("playAgainBtn")
-  .addEventListener(
-    "click",
-    startGame
-  );
-
-
-/* =========================================================
-   AI SCANNER
-========================================================= */
-
-const startCameraBtn =
-  document.getElementById(
-    "startCameraBtn"
-  );
-
-const scanBtn =
-  document.getElementById(
-    "scanBtn"
-  );
-
-const switchCameraBtn =
-  document.getElementById(
-    "switchCameraBtn"
-  );
-
-
-startCameraBtn.addEventListener(
-  "click",
-  startCamera
-);
-
-
-scanBtn.addEventListener(
-  "click",
-  predictWaste
-);
-
-
-switchCameraBtn.addEventListener(
-  "click",
-  switchCamera
-);
-
-
-/* =========================================================
-   LOAD MODEL
-========================================================= */
-
-async function loadAIModel() {
-
-  try {
-
-    model =
-      await tmImage.load(
-        MODEL_PATH +
-          "model.json",
-
-        MODEL_PATH +
-          "metadata.json"
-      );
-
-    console.log(
-      "SmartWaste AI model loaded."
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Model loading error:",
-      error
-    );
-
-    showScannerError(
-      "Model AI tidak dapat dimuat. Pastikan folder model berada di lokasi yang betul."
-    );
-
-  }
 
 }
 
 
 /* =========================================================
-   START CAMERA
-========================================================= */
+   CAMERA
+   ========================================================= */
 
 async function startCamera() {
 
-  try {
+    try {
 
-    clearScannerError();
+        clearScannerError();
+
+        if (!navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia) {
+
+            throw new Error(
+                "Browser tidak menyokong akses kamera."
+            );
+
+        }
+
+        /* Stop camera lama dahulu */
+        stopCamera();
+
+        /*
+         * Kita guna getUserMedia secara terus.
+         * Ini mengelakkan masalah tmImage.Webcam.setup().
+         */
+
+        cameraStream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video: {
+                    facingMode: {
+                        ideal: facingMode
+                    },
+                    width: {
+                        ideal: 640
+                    },
+                    height: {
+                        ideal: 480
+                    }
+                },
+
+                audio: false
+
+            });
 
 
-    if (!model) {
+        /* =================================================
+           CREATE VIDEO ELEMENT
+           ================================================= */
 
-      await loadAIModel();
+        if (!video) {
+
+            video = document.createElement("video");
+
+            video.id = "smartwaste-video";
+
+            video.autoplay = true;
+            video.playsInline = true;
+            video.muted = true;
+
+            video.setAttribute(
+                "playsinline",
+                ""
+            );
+
+            video.style.width = "100%";
+            video.style.height = "auto";
+            video.style.display = "block";
+            video.style.borderRadius = "20px";
+
+        }
+
+
+        video.srcObject = cameraStream;
+
+        if (webcamContainer) {
+
+            webcamContainer.innerHTML = "";
+
+            webcamContainer.appendChild(video);
+
+        }
+
+
+        await video.play();
+
+        cameraRunning = true;
+
+
+        /* =================================================
+           BUTTON STATES
+           ================================================= */
+
+        if (startCameraBtn) {
+
+            startCameraBtn.textContent =
+                "📷 Kamera Aktif";
+
+            startCameraBtn.disabled = true;
+
+        }
+
+        if (scanBtn) {
+            scanBtn.disabled = false;
+        }
+
+        if (switchCameraBtn) {
+            switchCameraBtn.disabled = false;
+        }
+
+
+        if (cameraPlaceholder) {
+            cameraPlaceholder.style.display = "none";
+        }
+
+
+        /* Load AI model */
+        await loadModel();
+
+
+        console.log("Camera started successfully.");
+
+    } catch (error) {
+
+        console.error(
+            "Camera error:",
+            error
+        );
+
+        cameraRunning = false;
+
+        showCameraError(error);
 
     }
-
-
-    if (!model) {
-
-      throw new Error(
-        "Model AI tidak tersedia."
-      );
-
-    }
-
-
-    if (webcam) {
-
-      webcam.stop();
-
-      webcam = null;
-
-    }
-
-
-    webcam =
-      new tmImage.Webcam(
-        640,
-        480,
-        true
-      );
-
-
-  await webcam.setup();
-
-    await webcam.play();
-
-
-    const container =
-      document.getElementById(
-        "webcam-container"
-      );
-
-
-    container.innerHTML = "";
-
-    container.appendChild(
-      webcam.canvas
-    );
-
-
-    cameraStarted = true;
-
-
-    document
-      .getElementById(
-        "cameraPlaceholder"
-      )
-      .classList.add("hidden");
-
-
-    scanBtn.disabled = false;
-
-    switchCameraBtn.disabled =
-      false;
-
-
-    startCameraBtn.textContent =
-      "🔄 Mulakan Semula Kamera";
-
-
-    document.getElementById(
-      "cameraStatus"
-    ).textContent =
-      "Kamera aktif. Letakkan sisa di hadapan kamera.";
-
-
-    requestAnimationFrame(
-      webcamLoop
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-    showScannerError(
-      "Kamera tidak dapat digunakan. Sila benarkan akses kamera pada browser."
-    );
-
-  }
 
 }
 
 
 /* =========================================================
-   WEBCAM LOOP
-========================================================= */
+   CAMERA ERROR HANDLER
+   ========================================================= */
 
-async function webcamLoop() {
+function showCameraError(error) {
 
-  if (!webcam) return;
+    let message =
+        "❌ Kamera tidak dapat digunakan.";
+
+    if (error.name === "NotAllowedError") {
+
+        message =
+            "❌ Akses kamera ditolak. Sila benarkan kamera untuk laman ini.";
+
+    }
+
+    else if (error.name === "NotFoundError") {
+
+        message =
+            "❌ Kamera tidak dijumpai pada peranti.";
+
+    }
+
+    else if (error.name === "NotReadableError") {
+
+        message =
+            "❌ Kamera sedang digunakan oleh aplikasi lain.";
+
+    }
+
+    else if (error.name === "OverconstrainedError") {
+
+        message =
+            "❌ Tetapan kamera tidak disokong. Cuba kamera lain.";
+
+    }
+
+    else if (error.name === "SecurityError") {
+
+        message =
+            "❌ Browser menyekat akses kamera atas sebab keselamatan.";
+
+    }
+
+    else if (error.message) {
+
+        message =
+            "❌ " + error.message;
+
+    }
 
 
-  webcam.update();
+    if (scannerError) {
+        scannerError.textContent = message;
+    }
+
+}
 
 
-  requestAnimationFrame(
-    webcamLoop
-  );
+/* =========================================================
+   STOP CAMERA
+   ========================================================= */
+
+function stopCamera() {
+
+    if (cameraStream) {
+
+        cameraStream
+            .getTracks()
+            .forEach(track => track.stop());
+
+        cameraStream = null;
+
+    }
+
+    cameraRunning = false;
+
+
+    if (video) {
+
+        video.pause();
+
+        video.srcObject = null;
+
+    }
 
 }
 
 
 /* =========================================================
    SWITCH CAMERA
-========================================================= */
+   ========================================================= */
 
 async function switchCamera() {
 
-  if (!cameraStarted) return;
+    if (!cameraRunning) {
+
+        await startCamera();
+
+        return;
+
+    }
+
+    facingMode =
+        facingMode === "environment"
+            ? "user"
+            : "environment";
 
 
-  facingMode =
-    facingMode ===
-    "environment"
-      ? "user"
-      : "environment";
-
-
-  await startCamera();
+    await startCamera();
 
 }
 
 
 /* =========================================================
-   PREDICT
-========================================================= */
+   CAMERA BUTTON EVENTS
+   ========================================================= */
 
-async function predictWaste() {
+if (startCameraBtn) {
 
-  if (!model || !webcam) {
-
-    showScannerError(
-      "Sila mulakan kamera terlebih dahulu."
+    startCameraBtn.addEventListener(
+        "click",
+        startCamera
     );
 
-    return;
-
-  }
+}
 
 
-  try {
+if (switchCameraBtn) {
+
+    switchCameraBtn.addEventListener(
+        "click",
+        switchCamera
+    );
+
+}
+
+
+/* =========================================================
+   SCAN WASTE
+   ========================================================= */
+
+async function scanWaste() {
 
     clearScannerError();
 
+    if (!cameraRunning || !video) {
 
-    const predictions =
-      await model.predict(
-        webcam.canvas
-      );
+        showScannerMessage(
+            "📷 Sila hidupkan kamera terlebih dahulu."
+        );
 
+        return;
 
-    predictions.sort(
-      (a, b) =>
-        b.probability -
-        a.probability
-    );
+    }
 
 
-    const best =
-      predictions[0];
+    if (!model) {
+
+        const loaded =
+            await loadModel();
+
+        if (!loaded) return;
+
+    }
 
 
-    lastPrediction = best;
+    try {
+
+        if (video.readyState < 2) {
+
+            showScannerMessage(
+                "⏳ Kamera sedang disediakan..."
+            );
+
+            return;
+
+        }
 
 
-    const label =
-      best.className;
+        /*
+         * Teachable Machine boleh menerima HTMLVideoElement
+         * sebagai input prediction.
+         */
 
-    const confidence =
-      best.probability * 100;
-
-
-    displayPrediction(
-      label,
-      confidence
-    );
+        const predictions =
+            await model.predict(video);
 
 
-  } catch (error) {
+        if (!predictions ||
+            predictions.length === 0) {
 
-    console.error(
-      error
-    );
+            showScannerMessage(
+                "⚠️ AI tidak dapat mengenal pasti objek."
+            );
 
-    showScannerError(
-      "AI tidak dapat menganalisis imej."
-    );
+            return;
 
-  }
+        }
+
+
+        /* Susun dari confidence tertinggi */
+        predictions.sort(
+            (a, b) =>
+                b.probability - a.probability
+        );
+
+
+        const best =
+            predictions[0];
+
+
+        const label =
+            best.className;
+
+        const probability =
+            best.probability;
+
+
+        const percentage =
+            probability * 100;
+
+
+        const info =
+            getClassInfo(label);
+
+
+        /* Simpan prediction */
+        lastPredictions =
+            predictions;
+
+
+        /* =================================================
+           DISPLAY RESULT
+           ================================================= */
+
+        if (scannerResult) {
+            scannerResult.style.display = "block";
+        }
+
+
+        if (predictionLabel) {
+
+            predictionLabel.textContent =
+                info.emoji + " " + info.displayName;
+
+        }
+
+
+        if (binRecommendation) {
+
+            binRecommendation.textContent =
+                info.binEmoji + " " + info.bin;
+
+        }
+
+
+        if (confidenceText) {
+
+            confidenceText.textContent =
+                percentage.toFixed(2) + "%";
+
+        }
+
+
+        if (confidenceFill) {
+
+            confidenceFill.style.width =
+                Math.min(
+                    percentage,
+                    100
+                ) + "%";
+
+        }
+
+
+        if (smartTip) {
+
+            smartTip.textContent =
+                info.tip;
+
+        }
+
+
+        /* =================================================
+           CONFIDENCE MESSAGE
+           ================================================= */
+
+        if (percentage >= 80) {
+
+            if (confidenceText) {
+                confidenceText.textContent =
+                    percentage.toFixed(2) +
+                    "% • Sangat yakin";
+            }
+
+        }
+
+        else if (percentage >= 60) {
+
+            if (confidenceText) {
+                confidenceText.textContent =
+                    percentage.toFixed(2) +
+                    "% • Yakin";
+            }
+
+        }
+
+        else {
+
+            if (confidenceText) {
+                confidenceText.textContent =
+                    percentage.toFixed(2) +
+                    "% • Cuba imbas semula";
+            }
+
+        }
+
+
+        /* =================================================
+           ECO POINT
+           ================================================= */
+
+        /*
+         * +10 hanya sekali untuk satu sesi halaman.
+         * Ini mengelakkan pengguna mendapat point tanpa had
+         * dengan mengimbas objek yang sama berulang kali.
+         */
+
+        if (
+            percentage >= 60 &&
+            !scannerPointGiven
+        ) {
+
+            addEcoPoints(10);
+
+            scannerPointGiven = true;
+
+            if (scannerPoints) {
+
+                scannerPoints.textContent =
+                    "🎉 +10 Eco Points!";
+
+                scannerPoints.style.display =
+                    "block";
+
+            }
+
+        }
+
+
+        console.log(
+            "AI Prediction:",
+            label,
+            percentage.toFixed(2) + "%"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Prediction error:",
+            error
+        );
+
+        showScannerMessage(
+            "❌ AI gagal menganalisis objek."
+        );
+
+    }
 
 }
 
 
 /* =========================================================
-   CLASS INFORMATION
-========================================================= */
+   SCAN BUTTON
+   ========================================================= */
+
+if (scanBtn) {
+
+    scanBtn.addEventListener(
+        "click",
+        scanWaste
+    );
+
+}
+
+
+/* =========================================================
+   CLASS MAPPING
+   ========================================================= */
 
 function getClassInfo(label) {
 
-  const name =
-    label
-      .toLowerCase()
-      .trim();
+    const text =
+        String(label)
+            .toLowerCase()
+            .trim();
 
 
-  /* -------------------------
-     PLASTIC
-  ------------------------- */
+    /* =====================================================
+       PLASTIC
+       ===================================================== */
 
-  if (
-    name.includes("plastic") ||
-    name.includes("plastik")
-  ) {
+    if (
+        text.includes("plastic") ||
+        text.includes("plastik")
+    ) {
+
+        return {
+
+            displayName: "Plastik",
+
+            emoji: "🧴",
+
+            bin: "Tong Oren",
+
+            binEmoji: "🟧",
+
+            binColor: "orange",
+
+            tip:
+                "Asingkan plastik daripada sisa lain dan pastikan ia kosong sebelum dikitar semula."
+
+        };
+
+    }
+
+
+    /* =====================================================
+       PAPER
+       ===================================================== */
+
+    if (
+        text.includes("paper") ||
+        text.includes("kertas")
+    ) {
+
+        return {
+
+            displayName: "Kertas",
+
+            emoji: "📄",
+
+            bin: "Tong Biru",
+
+            binEmoji: "🔵",
+
+            binColor: "blue",
+
+            tip:
+                "Asingkan kertas daripada plastik dan sisa makanan. Kertas yang bersih lebih mudah dikitar semula."
+
+        };
+
+    }
+
+
+    /* =====================================================
+       METAL / TIN / ALUMINIUM
+       ===================================================== */
+
+    if (
+        text.includes("metal") ||
+        text.includes("tin") ||
+        text.includes("aluminium") ||
+        text.includes("aluminum") ||
+        text.includes("cans") ||
+        text.includes("can") ||
+        text.includes("logam")
+    ) {
+
+        return {
+
+            displayName:
+                "Tin Aluminium / Metal",
+
+            emoji: "🥫",
+
+            bin: "Tong Oren",
+
+            binEmoji: "🟧",
+
+            binColor: "orange",
+
+            tip:
+                "Kosongkan tin atau bekas logam sebelum dimasukkan ke tong kitar semula."
+
+        };
+
+    }
+
+
+    /* =====================================================
+       GLASS
+       ===================================================== */
+
+    if (
+        text.includes("glass") ||
+        text.includes("kaca")
+    ) {
+
+        return {
+
+            displayName: "Kaca",
+
+            emoji: "🍾",
+
+            bin: "Tong Coklat",
+
+            binEmoji: "🟫",
+
+            binColor: "brown",
+
+            tip:
+                "Kendalikan kaca dengan berhati-hati. Asingkan kaca daripada sisa lain."
+
+        };
+
+    }
+
+
+    /* =====================================================
+       UNKNOWN
+       ===================================================== */
 
     return {
 
-      title: "🧴 PLASTIC",
+        displayName: label,
 
-      bin: "🟧 TONG OREN",
+        emoji: "❓",
 
-      tip:
-        "Pastikan botol atau bekas plastik kosong dan asingkan sebelum dikitar semula.",
+        bin: "Tidak dapat ditentukan",
 
-      icon: "🧴"
+        binEmoji: "♻️",
 
-    };
+        binColor: "green",
 
-  }
-
-
-  /* -------------------------
-     PAPER
-  ------------------------- */
-
-  if (
-    name.includes("paper") ||
-    name.includes("kertas")
-  ) {
-
-    return {
-
-      title: "📄 PAPER",
-
-      bin: "🔵 TONG BIRU",
-
-      tip:
-        "Asingkan kertas daripada bahan lain dan pastikan ia sesuai untuk dikitar semula.",
-
-      icon: "📄"
+        tip:
+            "Cuba letakkan objek di hadapan kamera dengan pencahayaan yang baik dan imbas semula."
 
     };
-
-  }
-
-
-  /* -------------------------
-     METAL / TIN / ALUMINIUM
-  ------------------------- */
-
-  if (
-    name.includes("metal") ||
-    name.includes("tin") ||
-    name.includes("aluminium") ||
-    name.includes("aluminum") ||
-    name.includes("can") ||
-    name.includes("cans") ||
-    name.includes("logam")
-  ) {
-
-    return {
-
-      title: "🥫 METAL / TIN",
-
-      bin: "🟧 TONG OREN",
-
-      tip:
-        "Tin aluminium dan tin keluli boleh diasingkan untuk dikitar semula.",
-
-      icon: "🥫"
-
-    };
-
-  }
-
-
-  /* -------------------------
-     GLASS
-  ------------------------- */
-
-  if (
-    name.includes("glass") ||
-    name.includes("kaca")
-  ) {
-
-    return {
-
-      title: "🍾 GLASS",
-
-      bin: "🟫 TONG COKLAT",
-
-      tip:
-        "Kaca perlu diasingkan daripada bahan lain dan dikendalikan dengan berhati-hati.",
-
-      icon: "🍾"
-
-    };
-
-  }
-
-
-  /* -------------------------
-     UNKNOWN
-  ------------------------- */
-
-  return {
-
-    title:
-      label.toUpperCase(),
-
-    bin:
-      "🗑️ KENAL PASTI BAHAN",
-
-    tip:
-      "Sila semak jenis bahan sebelum menentukan tong yang sesuai.",
-
-    icon: "♻️"
-
-  };
 
 }
 
 
 /* =========================================================
-   DISPLAY PREDICTION
-========================================================= */
+   SCANNER MESSAGE
+   ========================================================= */
 
-function displayPrediction(
-  label,
-  confidence
-) {
+function showScannerMessage(message) {
 
-  const info =
-    getClassInfo(label);
-
-
-  document.getElementById(
-    "predictionLabel"
-  ).textContent =
-    info.title;
-
-
-  document.getElementById(
-    "binRecommendation"
-  ).textContent =
-    info.bin;
-
-
-  document.getElementById(
-    "confidenceText"
-  ).textContent =
-    `${confidence.toFixed(2)}%`;
-
-
-  document.getElementById(
-    "confidenceFill"
-  ).style.width =
-    `${Math.min(confidence, 100)}%`;
-
-
-  document.getElementById(
-    "smartTip"
-  ).textContent =
-    info.tip;
-
-
-  document.querySelector(
-    ".result-icon"
-  ).textContent =
-    info.icon;
-
-
-  /*
-     Eco Points diberikan sekali
-     untuk setiap sesi scan.
-  */
-
-  if (
-    confidence >= 60 &&
-    !scannerPointGiven
-  ) {
-
-    addEcoPoints(10);
-
-    scannerPointGiven = true;
-
-
-    document
-      .getElementById(
-        "scannerPoints"
-      )
-      .classList.remove("hidden");
-
-  }
-
-}
-
-
-/* =========================================================
-   SCANNER ERROR
-========================================================= */
-
-function showScannerError(
-  message
-) {
-
-  const error =
-    document.getElementById(
-      "scannerError"
-    );
-
-  error.textContent =
-    message;
-
-  error.classList.remove(
-    "hidden"
-  );
+    if (scannerError) {
+        scannerError.textContent = message;
+    }
 
 }
 
 
 function clearScannerError() {
 
-  document
-    .getElementById(
-      "scannerError"
-    )
-    .classList.add("hidden");
+    if (scannerError) {
+        scannerError.textContent = "";
+    }
 
 }
 
 
 /* =========================================================
-   CLEANUP
-========================================================= */
+   BIN CARDS
+   ========================================================= */
 
-window.addEventListener(
-  "beforeunload",
-  () => {
+function setupBinCards() {
 
-    if (webcam) {
+    const binCards =
+        document.querySelectorAll(
+            ".bin-card"
+        );
 
-      webcam.stop();
 
-    }
+    binCards.forEach(card => {
 
-  }
-);
+        card.addEventListener(
+            "click",
+            () => {
+
+                binCards.forEach(
+                    item =>
+                        item.classList.remove(
+                            "active"
+                        )
+                );
+
+                card.classList.add(
+                    "active"
+                );
+
+            }
+        );
+
+    });
+
+}
 
 
 /* =========================================================
-   INITIALISE
-========================================================= */
+   WASTE GAME
+   ========================================================= */
 
-updateEcoDisplay();
+const questions = [
+
+    {
+        question:
+            "Apakah tong yang sesuai untuk membuang kertas?",
+
+        answers: [
+            "🔵 Tong Biru",
+            "🟧 Tong Oren",
+            "🟫 Tong Coklat",
+            "🗑️ Tong Sampah Biasa"
+        ],
+
+        correct: 0,
+
+        tip:
+            "Kertas diletakkan di Tong Biru."
+    },
+
+
+    {
+        question:
+            "Botol plastik biasanya dikategorikan sebagai?",
+
+        answers: [
+            "Kaca",
+            "Plastik",
+            "Kertas",
+            "Logam"
+        ],
+
+        correct: 1,
+
+        tip:
+            "Botol plastik termasuk dalam kategori plastik."
+    },
+
+
+    {
+        question:
+            "Tin aluminium perlu dimasukkan ke tong?",
+
+        answers: [
+            "🔵 Biru",
+            "🟧 Oren",
+            "🟫 Coklat",
+            "Tiada tong"
+        ],
+
+        correct: 1,
+
+        tip:
+            "Tin aluminium atau logam dimasukkan ke Tong Oren."
+    },
+
+
+    {
+        question:
+            "Botol kaca sesuai dimasukkan ke?",
+
+        answers: [
+            "🔵 Tong Biru",
+            "🟧 Tong Oren",
+            "🟫 Tong Coklat",
+            "Tong sampah biasa"
+        ],
+
+        correct: 2,
+
+        tip:
+            "Kaca diletakkan di Tong Coklat."
+    },
+
+
+    {
+        question:
+            "Mengapa kita perlu mengasingkan sisa?",
+
+        answers: [
+            "Supaya sampah bertambah",
+            "Supaya mudah dikitar semula",
+            "Supaya tong cepat penuh",
+            "Supaya membazir"
+        ],
+
+        correct: 1,
+
+        tip:
+            "Pengasingan sisa membantu proses kitar semula."
+    },
+
+
+    {
+        question:
+            "Apakah contoh sisa plastik?",
+
+        answers: [
+            "Surat khabar",
+            "Botol plastik",
+            "Botol kaca",
+            "Tin aluminium"
+        ],
+
+        correct: 1,
+
+        tip:
+            "Botol plastik ialah contoh sisa plastik."
+    },
+
+
+    {
+        question:
+            "Apakah warna tong untuk kertas?",
+
+        answers: [
+            "🔵 Biru",
+            "🟧 Oren",
+            "🟫 Coklat",
+            "Merah"
+        ],
+
+        correct: 0,
+
+        tip:
+            "Tong Biru digunakan untuk kertas."
+    },
+
+
+    {
+        question:
+            "Apakah warna tong untuk kaca?",
+
+        answers: [
+            "🔵 Biru",
+            "🟧 Oren",
+            "🟫 Coklat",
+            "Hijau"
+        ],
+
+        correct: 2,
+
+        tip:
+            "Tong Coklat digunakan untuk kaca."
+    },
+
+
+    {
+        question:
+            "Tin minuman kosong tergolong dalam kategori?",
+
+        answers: [
+            "Kertas",
+            "Plastik",
+            "Logam",
+            "Kaca"
+        ],
+
+        correct: 2,
+
+        tip:
+            "Tin minuman ialah sisa logam."
+    },
+
+
+    {
+        question:
+            "Apakah tindakan yang baik sebelum mengitar semula bekas?",
+
+        answers: [
+            "Buang bersama makanan",
+            "Kosongkan dan bersihkan",
+            "Campurkan semua sisa",
+            "Pecahkan semua bekas"
+        ],
+
+        correct: 1,
+
+        tip:
+            "Bekas yang kosong dan bersih lebih sesuai untuk dikitar semula."
+    },
+
+
+    {
+        question:
+            "AI Waste Scanner membantu kita untuk?",
+
+        answers: [
+            "Membakar sampah",
+            "Mengenal pasti jenis sisa",
+            "Menambah sampah",
+            "Membuang sampah merata-rata"
+        ],
+
+        correct: 1,
+
+        tip:
+            "AI membantu mengenal pasti jenis sisa melalui imej."
+    },
+
+
+    {
+        question:
+            "Apakah maksud kitar semula?",
+
+        answers: [
+            "Menggunakan semula bahan untuk menghasilkan sesuatu",
+            "Membuang semua sampah",
+            "Membakar sampah",
+            "Meninggalkan sampah"
+        ],
+
+        correct: 0,
+
+        tip:
+            "Kitar semula membantu mengurangkan jumlah sisa."
+    },
+
+
+    {
+        question:
+            "Apakah SDG yang berkaitan dengan penggunaan dan pengeluaran bertanggungjawab?",
+
+        answers: [
+            "SDG 4",
+            "SDG 11",
+            "SDG 12",
+            "SDG 17"
+        ],
+
+        correct: 2,
+
+        tip:
+            "SDG 12 ialah Penggunaan dan Pengeluaran Bertanggungjawab."
+    },
+
+
+    {
+        question:
+            "Bagaimanakah kita boleh membantu alam sekitar?",
+
+        answers: [
+            "Membuang sampah merata-rata",
+            "Mengasingkan sisa",
+            "Membakar semua sampah",
+            "Menggunakan lebih banyak plastik"
+        ],
+
+        correct: 1,
+
+        tip:
+            "Pengasingan sisa ialah salah satu amalan baik untuk alam sekitar."
+    },
+
+
+    {
+        question:
+            "Apakah matlamat utama SmartWaste AI?",
+
+        answers: [
+            "Menggalakkan pembaziran",
+            "Membantu pembelajaran pengasingan sisa menggunakan AI",
+            "Menghasilkan lebih banyak sampah",
+            "Menghapuskan tong sampah"
+        ],
+
+        correct: 1,
+
+        tip:
+            "SmartWaste AI menggabungkan AI dan pendidikan untuk membantu murid mengenal pasti serta mengasingkan sisa."
+    }
+
+];
+
+
+/* =========================================================
+   GAME SETUP
+   ========================================================= */
+
+function setupGame() {
+
+    const startButton =
+        $("startGameBtn");
+
+    if (startButton) {
+
+        startButton.addEventListener(
+            "click",
+            startGame
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   START GAME
+   ========================================================= */
+
+function startGame() {
+
+    gameScore = 0;
+    currentQuestion = 0;
+    gameStarted = true;
+
+
+    if (gameStart) {
+        gameStart.style.display = "none";
+    }
+
+    if (gameResult) {
+        gameResult.style.display = "none";
+    }
+
+    if (gamePlay) {
+        gamePlay.style.display = "block";
+    }
+
+
+    showQuestion();
+
+}
+
+
+/* =========================================================
+   SHOW QUESTION
+   ========================================================= */
+
+function showQuestion() {
+
+    const question =
+        questions[currentQuestion];
+
+    if (!question) {
+
+        finishGame();
+
+        return;
+
+    }
+
+
+    const questionNumber =
+        currentQuestion + 1;
+
+
+    const questionText =
+        $("questionText");
+
+    const questionProgress =
+        $("questionProgress");
+
+    const answerContainer =
+        $("answerContainer");
+
+
+    if (questionText) {
+
+        questionText.textContent =
+            question.question;
+
+    }
+
+
+    if (questionProgress) {
+
+        questionProgress.textContent =
+            `Soalan ${questionNumber}/${questions.length}`;
+
+    }
+
+
+    if (answerContainer) {
+
+        answerContainer.innerHTML = "";
+
+
+        question.answers.forEach(
+            (answer, index) => {
+
+                const button =
+                    document.createElement("button");
+
+                button.className =
+                    "answer-btn";
+
+                button.textContent =
+                    answer;
+
+                button.addEventListener(
+                    "click",
+                    () =>
+                        answerQuestion(index)
+                );
+
+                answerContainer.appendChild(
+                    button
+                );
+
+            }
+        );
+
+    }
+
+
+    const gameFeedback =
+        $("gameFeedback");
+
+    if (gameFeedback) {
+        gameFeedback.textContent = "";
+    }
+
+
+    const gameScoreDisplay =
+        $("gameScore");
+
+    if (gameScoreDisplay) {
+
+        gameScoreDisplay.textContent =
+            gameScore;
+
+    }
+
+}
+
+
+/* =========================================================
+   ANSWER QUESTION
+   ========================================================= */
+
+function answerQuestion(selectedIndex) {
+
+    const question =
+        questions[currentQuestion];
+
+
+    const answerButtons =
+        document.querySelectorAll(
+            ".answer-btn"
+        );
+
+
+    answerButtons.forEach(
+        button =>
+            button.disabled = true
+    );
+
+
+    const feedback =
+        $("gameFeedback");
+
+
+    if (
+        selectedIndex ===
+        question.correct
+    ) {
+
+        gameScore += 10;
+
+
+        if (answerButtons[selectedIndex]) {
+
+            answerButtons[selectedIndex]
+                .classList.add("correct");
+
+        }
+
+
+        if (feedback) {
+
+            feedback.textContent =
+                "✅ Betul! +10 Eco Points — " +
+                question.tip;
+
+        }
+
+    }
+
+    else {
+
+        if (answerButtons[selectedIndex]) {
+
+            answerButtons[selectedIndex]
+                .classList.add("wrong");
+
+        }
+
+
+        if (answerButtons[question.correct]) {
+
+            answerButtons[question.correct]
+                .classList.add("correct");
+
+        }
+
+
+        if (feedback) {
+
+            feedback.textContent =
+                "❌ Belum tepat. " +
+                question.tip;
+
+        }
+
+    }
+
+
+    const gameScoreDisplay =
+        $("gameScore");
+
+    if (gameScoreDisplay) {
+
+        gameScoreDisplay.textContent =
+            gameScore;
+
+    }
+
+
+    setEcoPoints(
+        getEcoPoints() +
+        (
+            selectedIndex === question.correct
+                ? 10
+                : 0
+        )
+    );
+
+
+    setTimeout(() => {
+
+        currentQuestion++;
+
+        showQuestion();
+
+    }, 1800);
+
+}
+
+
+/* =========================================================
+   FINISH GAME
+   ========================================================= */
+
+function finishGame() {
+
+    gameStarted = false;
+
+
+    if (gamePlay) {
+        gamePlay.style.display = "none";
+    }
+
+    if (gameResult) {
+        gameResult.style.display = "block";
+    }
+
+
+    const finalScore =
+        $("finalScore");
+
+    const finalRank =
+        $("finalRank");
+
+
+    if (finalScore) {
+
+        finalScore.textContent =
+            gameScore + " / 150";
+
+    }
+
+
+    if (finalRank) {
+
+        finalRank.textContent =
+            getRank(gameScore);
+
+    }
+
+
+    const resultMessage =
+        $("resultMessage");
+
+
+    if (resultMessage) {
+
+        if (gameScore >= 130) {
+
+            resultMessage.textContent =
+                "Hebat! Anda sangat peka terhadap pengasingan sisa.";
+
+        }
+
+        else if (gameScore >= 100) {
+
+            resultMessage.textContent =
+                "Tahniah! Pengetahuan anda tentang pengurusan sisa sangat baik.";
+
+        }
+
+        else if (gameScore >= 60) {
+
+            resultMessage.textContent =
+                "Bagus! Teruskan belajar dan amalkan pengasingan sisa.";
+
+        }
+
+        else {
+
+            resultMessage.textContent =
+                "Jangan risau! Cuba lagi dan tingkatkan pengetahuan anda.";
+
+        }
+
+    }
+
+
+    updateEcoDisplay();
+
+}
+
+
+/* =========================================================
+   RESTART GAME
+   ========================================================= */
+
+const restartGameBtn =
+    $("restartGameBtn");
+
+
+if (restartGameBtn) {
+
+    restartGameBtn.addEventListener(
+        "click",
+        () => {
+
+            if (gameResult) {
+                gameResult.style.display =
+                    "none";
+            }
+
+            if (gameStart) {
+                gameStart.style.display =
+                    "block";
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   PAGE CLEANUP
+   ========================================================= */
+
+window.addEventListener(
+    "beforeunload",
+    () => {
+
+        stopCamera();
+
+    }
+);
