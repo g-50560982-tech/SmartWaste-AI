@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>SmartWaste AI</title>
+
+  <meta
+    name="description"
+    content="SmartWaste AI - Belajar, bermain dan mengasingkan sisa dengan bantuan AI."
+  >
+
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+
+  <!-- Teachable Machine -->
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
+<header class="top-header">
+
+  <div class="brand">
+    <span class="brand-icon">♻️</span>
+
+    <div>
+      <h1>SMARTWASTE AI</h1>
+      <p>Learn • Play • Scan • Save</p>
+    </div>
+  </div>
+
+  <button
+    id="themeToggle"
+    class="theme-btn"
+    aria-label="Tukar tema"
+  >
+    🌙
+  </button>
+
+</header>
+
+
+<!-- =========================================================
+     NAVIGATION
+========================================================= -->
+
+<nav class="main-nav">
+
+  <button class="nav-btn active" data-section="home">
+    🏠 Home
+  </button>
+
+  <button class="nav-btn" data-section="learn">
+    🤖 Kenali AI
+  </button>
+
+  <button class="nav-btn" data-section="bins">
+    🗑️ Warna Tong
+  </button>
+
+  <button class="nav-btn" data-section="sdg">
+    🌍 SDG
+  </button>
+
+  <button class="nav-btn" data-section="game">
+    🎮 Waste Game
+  </button>
+
+  <button class="nav-btn" data-section="scanner">
+    📷 AI Scanner
+  </button>
+
+</nav>
+
+
+<main>
+
+<!-- =========================================================
+     HOME
+========================================================= -->
+
+<section id="home" class="page-section active-section">
+
+  <div class="hero">
+
+    <div class="hero-content">
+
+      <span class="hero-badge">🤖 AI + 🌱 Alam Sekitar</span>
+
+      <h2>Kenali Sisa Dengan AI</h2>
+
+      <p>
+        Belajar mengenali, mengasingkan dan mengurus sisa
+        dengan cara yang lebih mudah dan menyeronokkan.
+      </p>
+
+      <div class="hero-buttons">
+
+        <button class="primary-btn" data-go="game">
+          🎮 Mula Waste Challenge
+        </button>
+
+        <button class="secondary-btn" data-go="scanner">
+          📷 Cuba AI Scanner
+        </button>
+
+      </div>
+
+    </div>
+
+    <div class="hero-visual">
+      <div class="ai-orb">
+        <span>♻️</span>
+        <strong>AI</strong>
+      </div>
+    </div>
+
+  </div>
+
+
+  <div class="home-grid">
+
+    <button class="feature-card" data-go="learn">
+
+      <div class="feature-icon">🤖</div>
+
+      <h3>Kenali SmartWaste AI</h3>
+
+      <p>
+        Ketahui bagaimana AI membantu mengenal pasti sisa.
+      </p>
+
+    </button>
+
+
+    <button class="feature-card" data-go="bins">
+
+      <div class="feature-icon">🗑️</div>
+
+      <h3>Kenali Warna Tong</h3>
+
+      <p>
+        Belajar jenis sisa bagi setiap warna tong.
+      </p>
+
+    </button>
+
+
+    <button class="feature-card" data-go="sdg">
+
+      <div class="feature-icon">🌍</div>
+
+      <h3>SmartWaste & SDG</h3>
+
+      <p>
+        Kenali hubungan SmartWaste AI dengan SDG.
+      </p>
+
+    </button>
+
+
+    <button class="feature-card" data-go="game">
+
+      <div class="feature-icon">🎮</div>
+
+      <h3>Waste Game</h3>
+
+      <p>
+        Uji kemahiran pengasingan sisa dan kumpul Eco Points.
+      </p>
+
+    </button>
+
+
+    <button class="feature-card scanner-card" data-go="scanner">
+
+      <div class="feature-icon">📷</div>
+
+      <h3>AI Waste Scanner</h3>
+
+      <p>
+        Imbas sisa dan biarkan AI mengenal pastinya.
+      </p>
+
+    </button>
+
+  </div>
+
+
+  <div class="eco-strip">
+
+    <div>
+      <span>⭐</span>
+      <strong id="homePoints">0</strong>
+      <small>Eco Points</small>
+    </div>
+
+    <div>
+      <span>🏆</span>
+      <strong id="homeRank">🌱</strong>
+      <small>Eco Rank</small>
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     KENALI SMARTWASTE AI
+========================================================= -->
+
+<section id="learn" class="page-section">
+
+  <div class="section-heading">
+
+    <span class="section-icon">🤖</span>
+
+    <h2>Kenali SmartWaste AI</h2>
+
+    <p>
+      Belajar bagaimana teknologi AI membantu kita mengenali
+      dan mengasingkan sisa.
+    </p>
+
+  </div>
+
+
+  <div class="content-card">
+
+    <h3>♻️ Apa itu SmartWaste AI?</h3>
+
+    <p>
+      SmartWaste AI ialah sistem pembelajaran yang menggunakan
+      kecerdasan buatan (AI) untuk membantu mengenal pasti
+      jenis sisa melalui imej.
+    </p>
+
+  </div>
+
+
+  <div class="two-column">
+
+    <div class="content-card">
+
+      <h3>❓ Masalah yang ingin diselesaikan</h3>
+
+      <ul class="clean-list">
+        <li>🗑️ Sisa sering dicampurkan.</li>
+        <li>♻️ Murid mungkin kurang pasti cara mengasingkan sisa.</li>
+        <li>🌱 Kesedaran tentang kitar semula perlu dipupuk.</li>
+      </ul>
+
+    </div>
+
+
+    <div class="content-card">
+
+      <h3>🧠 Bagaimana AI membantu?</h3>
+
+      <ul class="clean-list">
+        <li>📷 Menggunakan imej sebagai input.</li>
+        <li>🤖 AI menganalisis imej.</li>
+        <li>♻️ AI mengenal pasti kategori sisa.</li>
+        <li>🗑️ Sistem mencadangkan tong yang sesuai.</li>
+      </ul>
+
+    </div>
+
+  </div>
+
+
+  <div class="content-card">
+
+    <h3>⚙️ Bagaimana sistem berfungsi?</h3>
+
+    <div class="flow">
+
+      <div class="flow-item">
+        <span>📷</span>
+        <strong>IMBAS</strong>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <div class="flow-item">
+        <span>🧠</span>
+        <strong>AI ANALISIS</strong>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <div class="flow-item">
+        <span>♻️</span>
+        <strong>KENAL PASTI</strong>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <div class="flow-item">
+        <span>🗑️</span>
+        <strong>CADANGAN TONG</strong>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <div class="flow-item">
+        <span>💡</span>
+        <strong>SMART TIP</strong>
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     WARNA TONG
+========================================================= -->
+
+<section id="bins" class="page-section">
+
+  <div class="section-heading">
+
+    <span class="section-icon">🗑️</span>
+
+    <h2>Kenali Warna Tong</h2>
+
+    <p>
+      Klik pada tong untuk mengetahui jenis sisa yang sesuai.
+    </p>
+
+  </div>
+
+
+  <div class="bin-grid">
+
+    <button
+      class="bin-card blue-bin"
+      data-bin="paper"
+    >
+
+      <div class="bin-illustration">🗑️</div>
+
+      <h3>🔵 TONG BIRU</h3>
+
+      <strong>📄 Kertas</strong>
+
+      <p>
+        Surat khabar, majalah dan bahan kertas.
+      </p>
+
+    </button>
+
+
+    <button
+      class="bin-card orange-bin"
+      data-bin="orange"
+    >
+
+      <div class="bin-illustration">🗑️</div>
+
+      <h3>🟧 TONG OREN</h3>
+
+      <strong>🧴 Plastik & 🥫 Logam</strong>
+
+      <p>
+        Plastik, tin keluli dan tin aluminium.
+      </p>
+
+    </button>
+
+
+    <button
+      class="bin-card brown-bin"
+      data-bin="glass"
+    >
+
+      <div class="bin-illustration">🗑️</div>
+
+      <h3>🟫 TONG COKLAT</h3>
+
+      <strong>🍾 Kaca</strong>
+
+      <p>
+        Botol dan bekas kaca yang sesuai dikitar semula.
+      </p>
+
+    </button>
+
+  </div>
+
+
+  <div id="binInfo" class="bin-info hidden">
+
+    <button id="closeBinInfo" class="close-small">
+      ✕
+    </button>
+
+    <h3 id="binInfoTitle"></h3>
+
+    <p id="binInfoText"></p>
+
+    <div id="binExamples" class="examples"></div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     SDG
+========================================================= -->
+
+<section id="sdg" class="page-section">
+
+  <div class="section-heading">
+
+    <span class="section-icon">🌍</span>
+
+    <h2>SmartWaste AI & SDG</h2>
+
+    <p>
+      SmartWaste AI menghubungkan pembelajaran AI dengan
+      amalan menjaga alam sekitar.
+    </p>
+
+  </div>
+
+
+  <div class="sdg-grid">
+
+    <div class="sdg-card">
+
+      <div class="sdg-number">12</div>
+
+      <h3>🌱 SDG 12</h3>
+
+      <h4>
+        Penggunaan & Pengeluaran Bertanggungjawab
+      </h4>
+
+      <ul>
+        <li>♻️ Pengasingan sisa</li>
+        <li>🔄 Kitar semula</li>
+        <li>🗑️ Kurangkan pembaziran</li>
+      </ul>
+
+    </div>
+
+
+    <div class="sdg-card">
+
+      <div class="sdg-number">4</div>
+
+      <h3>📚 SDG 4</h3>
+
+      <h4>
+        Pendidikan Berkualiti
+      </h4>
+
+      <ul>
+        <li>🤖 Pembelajaran AI</li>
+        <li>🧠 Kemahiran menyelesaikan masalah</li>
+        <li>💡 Pembelajaran interaktif</li>
+      </ul>
+
+    </div>
+
+
+    <div class="sdg-card">
+
+      <div class="sdg-number">11</div>
+
+      <h3>🏙️ SDG 11</h3>
+
+      <h4>
+        Bandar & Komuniti Lestari
+      </h4>
+
+      <ul>
+        <li>🌱 Persekitaran bersih</li>
+        <li>♻️ Amalan kitar semula</li>
+        <li>🤝 Tanggungjawab bersama</li>
+      </ul>
+
+    </div>
+
+  </div>
+
+
+  <div class="impact-card">
+
+    <h3>💚 Smart Impact</h3>
+
+    <div class="impact-flow">
+
+      <span>📷 IMBAS</span>
+      <b>→</b>
+      <span>🤖 AI KENAL PASTI</span>
+      <b>→</b>
+      <span>🗑️ CADANGAN TONG</span>
+      <b>→</b>
+      <span>♻️ ASINGKAN</span>
+      <b>→</b>
+      <span>🌱 KOMUNITI LESTARI</span>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     WASTE GAME
+========================================================= -->
+
+<section id="game" class="page-section">
+
+  <div class="section-heading">
+
+    <span class="section-icon">🎮</span>
+
+    <h2>WASTE CHALLENGE</h2>
+
+    <p>
+      Test Your Waste-Sorting Skills!
+    </p>
+
+  </div>
+
+
+  <!-- GAME START -->
+
+  <div id="gameStart" class="game-start content-card">
+
+    <div class="game-icon">🎮</div>
+
+    <h3>Waste Challenge</h3>
+
+    <p>
+      Jawab 15 soalan dan kumpul sebanyak mungkin
+      <strong>Eco Points</strong>.
+    </p>
+
+    <div class="game-rules">
+
+      <span>❓ 15 Soalan</span>
+      <span>⭐ +10 Mata</span>
+      <span>🏆 Maksimum 150</span>
+
+    </div>
+
+    <button id="startGameBtn" class="primary-btn">
+      🚀 Mula Cabaran
+    </button>
+
+  </div>
+
+
+  <!-- GAME PLAY -->
+
+  <div id="gamePlay" class="game-play hidden">
+
+    <div class="game-top">
+
+      <div>
+        Soalan
+        <strong>
+          <span id="questionNumber">1</span>/15
+        </strong>
+      </div>
+
+      <div>
+        ⭐
+        <strong id="gamePoints">0</strong>
+      </div>
+
+    </div>
+
+
+    <div class="progress-container">
+
+      <div
+        id="questionProgress"
+        class="progress-fill"
+      ></div>
+
+    </div>
+
+
+    <div class="question-card">
+
+      <div
+        id="levelBadge"
+        class="level-badge"
+      >
+        🟢 LEVEL 1 — EASY
+      </div>
+
+      <h3 id="questionText">
+        Soalan akan muncul di sini.
+      </h3>
+
+      <div
+        id="answerOptions"
+        class="answer-options"
+      ></div>
+
+    </div>
+
+
+    <div
+      id="gameFeedback"
+      class="game-feedback hidden"
+    >
+
+      <h3 id="feedbackTitle"></h3>
+
+      <p id="feedbackText"></p>
+
+      <div id="feedbackTip"></div>
+
+      <div class="feedback-points">
+        <strong id="feedbackPoints"></strong>
+      </div>
+
+      <button
+        id="nextQuestionBtn"
+        class="primary-btn"
+      >
+        Seterusnya →
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- GAME RESULT -->
+
+  <div id="gameResult" class="game-result hidden">
+
+    <div class="result-trophy">🏆</div>
+
+    <h2>WELL DONE!</h2>
+
+    <p class="result-label">ECO POINTS</p>
+
+    <div
+      id="finalPoints"
+      class="final-points"
+    >
+      0
+    </div>
+
+    <div class="result-score">
+
+      <strong id="correctCount">0</strong>
+      <span>/ 15</span>
+
+    </div>
+
+    <div
+      id="ecoRank"
+      class="eco-rank"
+    >
+      🌱 ECO BEGINNER
+    </div>
+
+    <p id="resultMessage"></p>
+
+    <div class="result-buttons">
+
+      <button
+        id="playAgainBtn"
+        class="primary-btn"
+      >
+        🔄 Main Lagi
+      </button>
+
+      <button
+        class="secondary-btn"
+        data-go="scanner"
+      >
+        📷 Cuba AI Scanner
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     AI SCANNER
+========================================================= -->
+
+<section id="scanner" class="page-section">
+
+  <div class="section-heading">
+
+    <span class="section-icon">📷</span>
+
+    <h2>AI Waste Scanner</h2>
+
+    <p>
+      Tunjukkan sisa kepada kamera dan biarkan AI
+      mengenal pastinya.
+    </p>
+
+  </div>
+
+
+  <div class="scanner-layout">
+
+    <!-- CAMERA -->
+
+    <div class="scanner-card-main">
+
+      <div class="camera-frame">
+
+        <div
+          id="webcam-container"
+          class="webcam-container"
+        ></div>
+
+        <div class="scan-line"></div>
+
+        <div
+          id="cameraPlaceholder"
+          class="camera-placeholder"
+        >
+
+          <div>📷</div>
+
+          <p>
+            Tekan "Mula Kamera"
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="camera-buttons">
+
+        <button
+          id="startCameraBtn"
+          class="primary-btn"
+        >
+          📷 Mula Kamera
+        </button>
+
+        <button
+          id="scanBtn"
+          class="secondary-btn"
+          disabled
+        >
+          🔍 Scan Sekarang
+        </button>
+
+        <button
+          id="switchCameraBtn"
+          class="secondary-btn"
+          disabled
+        >
+          🔄 Tukar Kamera
+        </button>
+
+      </div>
+
+
+      <p
+        id="cameraStatus"
+        class="camera-status"
+      >
+        Kamera belum dimulakan.
+      </p>
+
+    </div>
+
+
+    <!-- RESULT -->
+
+    <div
+      id="scannerResult"
+      class="scanner-result"
+    >
+
+      <div class="result-icon">
+        ♻️
+      </div>
+
+      <p class="result-small">
+        AI DECISION
+      </p>
+
+      <h2 id="predictionLabel">
+        Belum diimbas
+      </h2>
+
+      <div
+        id="binRecommendation"
+        class="bin-recommendation"
+      >
+        🗑️ -
+      </div>
+
+      <div class="confidence-section">
+
+        <div class="confidence-header">
+
+          <span>
+            AI Confidence
+          </span>
+
+          <strong id="confidenceText">
+            0%
+          </strong>
+
+        </div>
+
+        <div class="confidence-bar">
+
+          <div
+            id="confidenceFill"
+            class="confidence-fill"
+          ></div>
+
+        </div>
+
+      </div>
+
+
+      <div class="smart-tip">
+
+        <strong>💡 SMART TIP</strong>
+
+        <p id="smartTip">
+          Imbas sisa untuk mendapatkan Smart Tip.
+        </p>
+
+      </div>
+
+
+      <div
+        id="scannerPoints"
+        class="scanner-points hidden"
+      >
+        ⭐ +10 ECO POINTS
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div
+    id="scannerError"
+    class="error-message hidden"
+  ></div>
+
+
+  <div class="scanner-info">
+
+    <h3>♻️ 4 Kategori AI</h3>
+
+    <div class="category-mini-grid">
+
+      <div>
+        📄
+        <strong>Paper</strong>
+        <span>🔵 Biru</span>
+      </div>
+
+      <div>
+        🧴
+        <strong>Plastic</strong>
+        <span>🟧 Oren</span>
+      </div>
+
+      <div>
+        🥫
+        <strong>Metal / Tin</strong>
+        <span>🟧 Oren</span>
+      </div>
+
+      <div>
+        🍾
+        <strong>Glass</strong>
+        <span>🟫 Coklat</span>
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+</main>
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer>
+
+  <div class="footer-brand">
+    ♻️ SMARTWASTE AI
+  </div>
+
+  <p>
+    Learn • Play • Scan • Save
+  </p>
+
+  <p class="footer-small">
+    AI-powered learning for smarter waste sorting.
+  </p>
+
+</footer>
+
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+
+<script src="script.js"></script>
+
+</body>
+</html>
