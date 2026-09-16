@@ -57,14 +57,52 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function setupNavigation() {
 
-    const navButtons =
-        document.querySelectorAll("[data-section]");
+    const navButtons = document.querySelectorAll("[data-section]");
+    const goButtons = document.querySelectorAll("[data-go]");
 
-    console.log(
-        "Navigation buttons:",
-        navButtons.length
-    );
+    console.log("Navigation buttons:", navButtons.length);
+    console.log("Go buttons:", goButtons.length);
 
+    function showSection(sectionId) {
+
+        const targetSection = document.getElementById(sectionId);
+
+        if (!targetSection) {
+            console.warn("Section tidak dijumpai:", sectionId);
+            return;
+        }
+
+        // Tutup semua section
+        document.querySelectorAll(".page-section").forEach(section => {
+            section.classList.remove("active-section");
+        });
+
+        // Buka section yang dipilih
+        targetSection.classList.add("active-section");
+
+        // Tukar button navigation kepada active
+        document.querySelectorAll(".nav-btn").forEach(button => {
+            button.classList.remove("active");
+        });
+
+        const activeButton = document.querySelector(
+            `.nav-btn[data-section="${sectionId}"]`
+        );
+
+        if (activeButton) {
+            activeButton.classList.add("active");
+        }
+
+        // Pergi ke bahagian atas
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+        console.log("Section aktif:", sectionId);
+    }
+
+    // Menu navigation atas
     navButtons.forEach(button => {
 
         button.addEventListener("click", () => {
@@ -72,34 +110,25 @@ function setupNavigation() {
             const sectionId =
                 button.getAttribute("data-section");
 
-            const section =
-                document.getElementById(sectionId);
-
-            if (section) {
-
-                section.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-
-                console.log(
-                    "Navigate to:",
-                    sectionId
-                );
-
-            } else {
-
-                console.warn(
-                    "Section tidak dijumpai:",
-                    sectionId
-                );
-
-            }
+            showSection(sectionId);
 
         });
 
     });
 
+    // Button/card dalam Home
+    goButtons.forEach(button => {
+
+        button.addEventListener("click", () => {
+
+            const sectionId =
+                button.getAttribute("data-go");
+
+            showSection(sectionId);
+
+        });
+
+    });
 }
 
 
