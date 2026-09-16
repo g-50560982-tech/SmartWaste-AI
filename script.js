@@ -1187,10 +1187,7 @@ async function startCamera() {
       );
 
 
-    await webcam.setup({
-      facingMode: facingMode
-    });
-
+  await webcam.setup();
 
     await webcam.play();
 
