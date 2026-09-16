@@ -1,6 +1,7 @@
 /* =========================================================
    SMARTWASTE AI
    Teachable Machine + Direct Camera Access
+
    4 Classes:
    Paper / Kertas
    Plastic / Plastik
@@ -8,9 +9,20 @@
    Glass / Kaca
    ========================================================= */
 
+
+/* =========================================================
+   MODEL
+   ========================================================= */
+
 const MODEL_PATH = "./model/";
 
+
+/* =========================================================
+   GLOBAL VARIABLES
+   ========================================================= */
+
 let model = null;
+
 let video = null;
 let cameraStream = null;
 let cameraRunning = false;
@@ -19,9 +31,16 @@ let facingMode = "environment";
 let lastPredictions = [];
 let scannerPointGiven = false;
 
+
+/* =========================================================
+   GAME VARIABLES
+   ========================================================= */
+
 let gameScore = 0;
 let currentQuestion = 0;
+let correctAnswers = 0;
 let gameStarted = false;
+let answerLocked = false;
 
 
 /* =========================================================
@@ -57,78 +76,137 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function setupNavigation() {
 
-    const navButtons = document.querySelectorAll("[data-section]");
-    const goButtons = document.querySelectorAll("[data-go]");
+    const navButtons =
+        document.querySelectorAll("[data-section]");
 
-    console.log("Navigation buttons:", navButtons.length);
-    console.log("Go buttons:", goButtons.length);
+    const goButtons =
+        document.querySelectorAll("[data-go]");
+
+    console.log(
+        "Navigation buttons:",
+        navButtons.length
+    );
+
+    console.log(
+        "Go buttons:",
+        goButtons.length
+    );
+
 
     function showSection(sectionId) {
 
-        const targetSection = document.getElementById(sectionId);
+        const targetSection =
+            document.getElementById(sectionId);
+
 
         if (!targetSection) {
-            console.warn("Section tidak dijumpai:", sectionId);
+
+            console.warn(
+                "Section tidak dijumpai:",
+                sectionId
+            );
+
             return;
+
         }
 
-        // Tutup semua section
-        document.querySelectorAll(".page-section").forEach(section => {
-            section.classList.remove("active-section");
-        });
 
-        // Buka section yang dipilih
-        targetSection.classList.add("active-section");
+        document
+            .querySelectorAll(".page-section")
+            .forEach(section => {
 
-        // Tukar button navigation kepada active
-        document.querySelectorAll(".nav-btn").forEach(button => {
-            button.classList.remove("active");
-        });
+                section.classList.remove(
+                    "active-section"
+                );
 
-        const activeButton = document.querySelector(
-            `.nav-btn[data-section="${sectionId}"]`
+            });
+
+
+        targetSection.classList.add(
+            "active-section"
         );
 
+
+        document
+            .querySelectorAll(".nav-btn")
+            .forEach(button => {
+
+                button.classList.remove(
+                    "active"
+                );
+
+            });
+
+
+        const activeButton =
+            document.querySelector(
+                `.nav-btn[data-section="${sectionId}"]`
+            );
+
+
         if (activeButton) {
-            activeButton.classList.add("active");
+
+            activeButton.classList.add(
+                "active"
+            );
+
         }
 
-        // Pergi ke bahagian atas
+
         window.scrollTo({
+
             top: 0,
+
             behavior: "smooth"
+
         });
 
-        console.log("Section aktif:", sectionId);
+
+        console.log(
+            "Section aktif:",
+            sectionId
+        );
+
     }
 
-    // Menu navigation atas
+
     navButtons.forEach(button => {
 
-        button.addEventListener("click", () => {
+        button.addEventListener(
+            "click",
+            () => {
 
-            const sectionId =
-                button.getAttribute("data-section");
+                const sectionId =
+                    button.getAttribute(
+                        "data-section"
+                    );
 
-            showSection(sectionId);
+                showSection(sectionId);
 
-        });
+            }
+        );
 
     });
 
-    // Button/card dalam Home
+
     goButtons.forEach(button => {
 
-        button.addEventListener("click", () => {
+        button.addEventListener(
+            "click",
+            () => {
 
-            const sectionId =
-                button.getAttribute("data-go");
+                const sectionId =
+                    button.getAttribute(
+                        "data-go"
+                    );
 
-            showSection(sectionId);
+                showSection(sectionId);
 
-        });
+            }
+        );
 
     });
+
 }
 
 
@@ -141,23 +219,38 @@ function setupThemeToggle() {
     const themeToggle =
         $("themeToggle");
 
+
     if (!themeToggle) {
-        console.warn("themeToggle tidak dijumpai.");
+
+        console.warn(
+            "themeToggle tidak dijumpai."
+        );
+
         return;
+
     }
+
 
     themeToggle.addEventListener(
         "click",
         () => {
 
-            document.body.classList.toggle("dark");
+            document.body.classList.toggle(
+                "dark"
+            );
+
 
             const isDark =
-                document.body.classList.contains("dark");
+                document.body.classList.contains(
+                    "dark"
+                );
+
 
             localStorage.setItem(
                 "smartwaste-theme",
-                isDark ? "dark" : "light"
+                isDark
+                    ? "dark"
+                    : "light"
             );
 
         }
@@ -173,9 +266,12 @@ function loadTheme() {
             "smartwaste-theme"
         );
 
+
     if (savedTheme === "dark") {
 
-        document.body.classList.add("dark");
+        document.body.classList.add(
+            "dark"
+        );
 
     }
 
@@ -226,15 +322,21 @@ function updateEcoDisplay() {
     const points =
         getEcoPoints();
 
+
     const elements = [
 
         $("ecoPoints"),
+
         $("totalEcoPoints"),
+
         $("homeEcoPoints"),
+
         $("scannerEcoPoints"),
+
         $("gameEcoPoints")
 
     ];
+
 
     elements.forEach(element => {
 
@@ -262,17 +364,20 @@ function getRank(points) {
 
     }
 
+
     if (points >= 100) {
 
         return "🌍 Eco Champion";
 
     }
 
+
     if (points >= 60) {
 
         return "♻️ Eco Learner";
 
     }
+
 
     return "🌱 Eco Beginner";
 
@@ -291,8 +396,10 @@ async function loadModel() {
 
     }
 
+
     const scannerError =
         $("scannerError");
+
 
     try {
 
@@ -303,7 +410,11 @@ async function loadModel() {
 
         }
 
-        if (typeof tmImage === "undefined") {
+
+        if (
+            typeof tmImage ===
+            "undefined"
+        ) {
 
             throw new Error(
                 "Teachable Machine library tidak dimuatkan."
@@ -311,12 +422,15 @@ async function loadModel() {
 
         }
 
+
         model =
             await tmImage.load(
 
-                MODEL_PATH + "model.json",
+                MODEL_PATH +
+                "model.json",
 
-                MODEL_PATH + "metadata.json"
+                MODEL_PATH +
+                "metadata.json"
 
             );
 
@@ -328,9 +442,11 @@ async function loadModel() {
 
         if (scannerError) {
 
-            scannerError.textContent = "";
+            scannerError.textContent =
+                "";
 
         }
+
 
         return true;
 
@@ -349,6 +465,7 @@ async function loadModel() {
                 "❌ Model AI tidak dapat dimuatkan. Sila semak folder model.";
 
         }
+
 
         return false;
 
@@ -437,10 +554,6 @@ async function startCamera() {
         clearScannerError();
 
 
-        /* ---------------------------------------------
-           Check browser camera support
-           --------------------------------------------- */
-
         if (
             !navigator.mediaDevices ||
             !navigator.mediaDevices.getUserMedia
@@ -453,16 +566,8 @@ async function startCamera() {
         }
 
 
-        /* ---------------------------------------------
-           Stop previous camera
-           --------------------------------------------- */
-
         stopCamera();
 
-
-        /* ---------------------------------------------
-           Direct camera access
-           --------------------------------------------- */
 
         cameraStream =
             await navigator.mediaDevices.getUserMedia({
@@ -470,15 +575,24 @@ async function startCamera() {
                 video: {
 
                     facingMode: {
-                        ideal: facingMode
+
+                        ideal:
+                            facingMode
+
                     },
 
                     width: {
-                        ideal: 640
+
+                        ideal:
+                            640
+
                     },
 
                     height: {
-                        ideal: 480
+
+                        ideal:
+                            480
+
                     }
 
                 },
@@ -493,12 +607,10 @@ async function startCamera() {
         );
 
 
-        /* ---------------------------------------------
-           Create video
-           --------------------------------------------- */
-
         video =
-            document.createElement("video");
+            document.createElement(
+                "video"
+            );
 
 
         video.id =
@@ -543,13 +655,10 @@ async function startCamera() {
             cameraStream;
 
 
-        /* ---------------------------------------------
-           Put video inside container
-           --------------------------------------------- */
-
         if (webcamContainer) {
 
-            webcamContainer.innerHTML = "";
+            webcamContainer.innerHTML =
+                "";
 
             webcamContainer.appendChild(
                 video
@@ -564,10 +673,6 @@ async function startCamera() {
         cameraRunning =
             true;
 
-
-        /* ---------------------------------------------
-           Button states
-           --------------------------------------------- */
 
         if (startCameraBtn) {
 
@@ -603,10 +708,6 @@ async function startCamera() {
 
         }
 
-
-        /* ---------------------------------------------
-           Load AI
-           --------------------------------------------- */
 
         await loadModel();
 
@@ -646,13 +747,15 @@ function showCameraError(error) {
     const scannerError =
         $("scannerError");
 
+
     let message =
         "❌ Kamera tidak dapat digunakan.";
 
 
     if (
         error &&
-        error.name === "NotAllowedError"
+        error.name ===
+            "NotAllowedError"
     ) {
 
         message =
@@ -662,7 +765,8 @@ function showCameraError(error) {
 
     else if (
         error &&
-        error.name === "NotFoundError"
+        error.name ===
+            "NotFoundError"
     ) {
 
         message =
@@ -672,7 +776,8 @@ function showCameraError(error) {
 
     else if (
         error &&
-        error.name === "NotReadableError"
+        error.name ===
+            "NotReadableError"
     ) {
 
         message =
@@ -682,7 +787,8 @@ function showCameraError(error) {
 
     else if (
         error &&
-        error.name === "OverconstrainedError"
+        error.name ===
+            "OverconstrainedError"
     ) {
 
         message =
@@ -692,7 +798,8 @@ function showCameraError(error) {
 
     else if (
         error &&
-        error.name === "SecurityError"
+        error.name ===
+            "SecurityError"
     ) {
 
         message =
@@ -706,7 +813,8 @@ function showCameraError(error) {
     ) {
 
         message =
-            "❌ " + error.message;
+            "❌ " +
+            error.message;
 
     }
 
@@ -736,6 +844,7 @@ function stopCamera() {
                 track.stop();
 
             });
+
 
         cameraStream =
             null;
@@ -775,7 +884,8 @@ async function switchCamera() {
 
 
     facingMode =
-        facingMode === "environment"
+        facingMode ===
+            "environment"
             ? "user"
             : "environment";
 
@@ -819,10 +929,6 @@ async function scanWaste() {
         $("scannerPoints");
 
 
-    /* ---------------------------------------------
-       Check camera
-       --------------------------------------------- */
-
     if (
         !cameraRunning ||
         !videoElement
@@ -837,14 +943,11 @@ async function scanWaste() {
     }
 
 
-    /* ---------------------------------------------
-       Check model
-       --------------------------------------------- */
-
     if (!model) {
 
         const loaded =
             await loadModel();
+
 
         if (!loaded) {
 
@@ -858,7 +961,8 @@ async function scanWaste() {
     try {
 
         if (
-            videoElement.readyState < 2
+            videoElement.readyState <
+            2
         ) {
 
             showScannerMessage(
@@ -870,10 +974,6 @@ async function scanWaste() {
         }
 
 
-        /* ---------------------------------------------
-           AI Prediction
-           --------------------------------------------- */
-
         const predictions =
             await model.predict(
                 videoElement
@@ -882,7 +982,8 @@ async function scanWaste() {
 
         if (
             !predictions ||
-            predictions.length === 0
+            predictions.length ===
+                0
         ) {
 
             showScannerMessage(
@@ -893,10 +994,6 @@ async function scanWaste() {
 
         }
 
-
-        /* ---------------------------------------------
-           Sort highest probability
-           --------------------------------------------- */
 
         predictions.sort(
             (a, b) =>
@@ -930,10 +1027,6 @@ async function scanWaste() {
         lastPredictions =
             predictions;
 
-
-        /* ---------------------------------------------
-           Show result
-           --------------------------------------------- */
 
         if (scannerResult) {
 
@@ -998,7 +1091,8 @@ async function scanWaste() {
                 Math.min(
                     percentage,
                     100
-                ) + "%";
+                ) +
+                "%";
 
         }
 
@@ -1010,10 +1104,6 @@ async function scanWaste() {
 
         }
 
-
-        /* ---------------------------------------------
-           Eco Points
-           --------------------------------------------- */
 
         if (
             percentage >= 60 &&
@@ -1042,7 +1132,8 @@ async function scanWaste() {
         console.log(
             "AI Prediction:",
             label,
-            percentage.toFixed(2) + "%"
+            percentage.toFixed(2) +
+            "%"
         );
 
 
@@ -1075,9 +1166,7 @@ function getClassInfo(label) {
             .trim();
 
 
-    /* ---------------------------------------------
-       PLASTIC
-       --------------------------------------------- */
+    /* PLASTIC */
 
     if (
         text.includes("plastic") ||
@@ -1109,9 +1198,7 @@ function getClassInfo(label) {
     }
 
 
-    /* ---------------------------------------------
-       PAPER
-       --------------------------------------------- */
+    /* PAPER */
 
     if (
         text.includes("paper") ||
@@ -1143,9 +1230,7 @@ function getClassInfo(label) {
     }
 
 
-    /* ---------------------------------------------
-       METAL / TIN
-       --------------------------------------------- */
+    /* METAL / TIN */
 
     if (
         text.includes("metal") ||
@@ -1182,9 +1267,7 @@ function getClassInfo(label) {
     }
 
 
-    /* ---------------------------------------------
-       GLASS
-       --------------------------------------------- */
+    /* GLASS */
 
     if (
         text.includes("glass") ||
@@ -1216,9 +1299,7 @@ function getClassInfo(label) {
     }
 
 
-    /* ---------------------------------------------
-       UNKNOWN
-       --------------------------------------------- */
+    /* UNKNOWN */
 
     return {
 
@@ -1254,6 +1335,7 @@ function showScannerMessage(message) {
     const scannerError =
         $("scannerError");
 
+
     if (scannerError) {
 
         scannerError.textContent =
@@ -1268,6 +1350,7 @@ function clearScannerError() {
 
     const scannerError =
         $("scannerError");
+
 
     if (scannerError) {
 
@@ -1649,6 +1732,13 @@ function setupGame() {
         );
 
     }
+    else {
+
+        console.warn(
+            "startGameBtn tidak dijumpai."
+        );
+
+    }
 
 
     if (restartButton) {
@@ -1656,6 +1746,13 @@ function setupGame() {
         restartButton.addEventListener(
             "click",
             restartGame
+        );
+
+    }
+    else {
+
+        console.warn(
+            "restartGameBtn tidak dijumpai."
         );
 
     }
@@ -1674,14 +1771,25 @@ function setupGame() {
 
 function startGame() {
 
+    console.log(
+        "🚀 GAME DIMULAKAN"
+    );
+
+
     gameScore =
         0;
 
     currentQuestion =
         0;
 
+    correctAnswers =
+        0;
+
     gameStarted =
         true;
+
+    answerLocked =
+        false;
 
 
     const gameStart =
@@ -1694,7 +1802,13 @@ function startGame() {
         $("gameResult");
 
 
+    /* Hide start screen */
+
     if (gameStart) {
+
+        gameStart.classList.add(
+            "hidden"
+        );
 
         gameStart.style.display =
             "none";
@@ -1702,7 +1816,13 @@ function startGame() {
     }
 
 
+    /* Hide result */
+
     if (gameResult) {
+
+        gameResult.classList.add(
+            "hidden"
+        );
 
         gameResult.style.display =
             "none";
@@ -1710,15 +1830,21 @@ function startGame() {
     }
 
 
+    /* Show gameplay */
+
     if (gamePlay) {
 
-    gamePlay.classList.remove("hidden");
+        gamePlay.classList.remove(
+            "hidden"
+        );
 
-    gamePlay.style.display =
-        "block";
+        gamePlay.style.display =
+            "block";
 
-}
+    }
 
+
+    updateGameScore();
 
     showQuestion();
 
@@ -1735,6 +1861,8 @@ function showQuestion() {
         questions[currentQuestion];
 
 
+    /* Game tamat */
+
     if (!question) {
 
         finishGame();
@@ -1744,12 +1872,19 @@ function showQuestion() {
     }
 
 
+    answerLocked =
+        false;
+
+
     const questionNumber =
         currentQuestion + 1;
 
 
     const questionText =
         $("questionText");
+
+    const questionNumberDisplay =
+        $("questionNumber");
 
     const questionProgress =
         $("questionProgress");
@@ -1760,9 +1895,26 @@ function showQuestion() {
     const gameFeedback =
         $("gameFeedback");
 
-    const gameScoreDisplay =
-        $("gameScore");
+    const feedbackTitle =
+        $("feedbackTitle");
 
+    const feedbackText =
+        $("feedbackText");
+
+    const feedbackTip =
+        $("feedbackTip");
+
+    const feedbackPoints =
+        $("feedbackPoints");
+
+    const nextQuestionBtn =
+        $("nextQuestionBtn");
+
+    const levelBadge =
+        $("levelBadge");
+
+
+    /* Question */
 
     if (questionText) {
 
@@ -1772,29 +1924,122 @@ function showQuestion() {
     }
 
 
+    /* Question number */
+
+    if (questionNumberDisplay) {
+
+        questionNumberDisplay.textContent =
+            questionNumber;
+
+    }
+
+
+    /* Progress bar */
+
     if (questionProgress) {
 
+        questionProgress.style.width =
+            (
+                questionNumber /
+                questions.length *
+                100
+            ) +
+            "%";
+
         questionProgress.textContent =
-            `Soalan ${questionNumber}/${questions.length}`;
-
-    }
-
-
-    if (gameScoreDisplay) {
-
-        gameScoreDisplay.textContent =
-            gameScore;
-
-    }
-
-
-    if (gameFeedback) {
-
-        gameFeedback.textContent =
             "";
 
     }
 
+
+    /* Level */
+
+    if (levelBadge) {
+
+        if (questionNumber <= 5) {
+
+            levelBadge.textContent =
+                "🟢 LEVEL 1 — EASY";
+
+        }
+
+        else if (questionNumber <= 10) {
+
+            levelBadge.textContent =
+                "🟡 LEVEL 2 — MEDIUM";
+
+        }
+
+        else {
+
+            levelBadge.textContent =
+                "🔴 LEVEL 3 — CHALLENGE";
+
+        }
+
+    }
+
+
+    /* Reset feedback */
+
+    if (gameFeedback) {
+
+        gameFeedback.classList.add(
+            "hidden"
+        );
+
+        gameFeedback.style.display =
+            "none";
+
+    }
+
+
+    if (feedbackTitle) {
+
+        feedbackTitle.textContent =
+            "";
+
+    }
+
+
+    if (feedbackText) {
+
+        feedbackText.textContent =
+            "";
+
+    }
+
+
+    if (feedbackTip) {
+
+        feedbackTip.textContent =
+            "";
+
+    }
+
+
+    if (feedbackPoints) {
+
+        feedbackPoints.textContent =
+            "";
+
+    }
+
+
+    if (nextQuestionBtn) {
+
+        nextQuestionBtn.style.display =
+            "none";
+
+    }
+
+
+    /* Score */
+
+    updateGameScore();
+
+
+    /* Answer buttons */
 
     if (answerContainer) {
 
@@ -1809,6 +2054,10 @@ function showQuestion() {
                     document.createElement(
                         "button"
                     );
+
+
+                button.type =
+                    "button";
 
 
                 button.className =
@@ -1840,6 +2089,14 @@ function showQuestion() {
 
     }
 
+
+    console.log(
+        "Soalan:",
+        questionNumber,
+        "/",
+        questions.length
+    );
+
 }
 
 
@@ -1848,6 +2105,16 @@ function showQuestion() {
    ========================================================= */
 
 function answerQuestion(selectedIndex) {
+
+    if (
+        answerLocked ||
+        !gameStarted
+    ) {
+
+        return;
+
+    }
+
 
     const question =
         questions[currentQuestion];
@@ -1858,6 +2125,10 @@ function answerQuestion(selectedIndex) {
         return;
 
     }
+
+
+    answerLocked =
+        true;
 
 
     const answerButtons =
@@ -1876,19 +2147,41 @@ function answerQuestion(selectedIndex) {
     );
 
 
-    const feedback =
-        $("gameFeedback");
-
-
     const isCorrect =
         selectedIndex ===
         question.correct;
 
 
+    const gameFeedback =
+        $("gameFeedback");
+
+    const feedbackTitle =
+        $("feedbackTitle");
+
+    const feedbackText =
+        $("feedbackText");
+
+    const feedbackTip =
+        $("feedbackTip");
+
+    const feedbackPoints =
+        $("feedbackPoints");
+
+    const nextQuestionBtn =
+        $("nextQuestionBtn");
+
+
+    /* =====================================================
+       BETUL
+       ===================================================== */
+
     if (isCorrect) {
 
         gameScore +=
             10;
+
+        correctAnswers +=
+            1;
 
 
         if (answerButtons[selectedIndex]) {
@@ -1901,15 +2194,48 @@ function answerQuestion(selectedIndex) {
         }
 
 
-        if (feedback) {
+        if (feedbackTitle) {
 
-            feedback.textContent =
-                "✅ Betul! +10 Eco Points — " +
+            feedbackTitle.textContent =
+                "✅ BETUL!";
+
+        }
+
+
+        if (feedbackText) {
+
+            feedbackText.textContent =
+                "Syabas! Jawapan anda tepat.";
+
+        }
+
+
+        if (feedbackTip) {
+
+            feedbackTip.textContent =
                 question.tip;
 
         }
 
+
+        if (feedbackPoints) {
+
+            feedbackPoints.textContent =
+                "+10 Eco Points ⭐";
+
+        }
+
+
+        /* Tambah Eco Points */
+
+        addEcoPoints(10);
+
     }
+
+
+    /* =====================================================
+       SALAH
+       ===================================================== */
 
     else {
 
@@ -1933,16 +2259,112 @@ function answerQuestion(selectedIndex) {
         }
 
 
-        if (feedback) {
+        if (feedbackTitle) {
 
-            feedback.textContent =
-                "❌ Belum tepat. " +
+            feedbackTitle.textContent =
+                "❌ BELUM TEPAT";
+
+        }
+
+
+        if (feedbackText) {
+
+            feedbackText.textContent =
+                "Jawapan yang betul telah ditunjukkan.";
+
+        }
+
+
+        if (feedbackTip) {
+
+            feedbackTip.textContent =
                 question.tip;
+
+        }
+
+
+        if (feedbackPoints) {
+
+            feedbackPoints.textContent =
+                "+0 Eco Points";
 
         }
 
     }
 
+
+    /* Update score */
+
+    updateGameScore();
+
+
+    /* Show feedback */
+
+    if (gameFeedback) {
+
+        gameFeedback.classList.remove(
+            "hidden"
+        );
+
+        gameFeedback.style.display =
+            "block";
+
+    }
+
+
+    /* Last question */
+
+    if (
+        currentQuestion ===
+        questions.length - 1
+    ) {
+
+        if (nextQuestionBtn) {
+
+            nextQuestionBtn.textContent =
+                "🏆 Lihat Keputusan";
+
+            nextQuestionBtn.style.display =
+                "block";
+
+            nextQuestionBtn.onclick =
+                finishGame;
+
+        }
+
+    }
+
+    else {
+
+        if (nextQuestionBtn) {
+
+            nextQuestionBtn.textContent =
+                "Seterusnya →";
+
+            nextQuestionBtn.style.display =
+                "block";
+
+            nextQuestionBtn.onclick =
+                () => {
+
+                    currentQuestion++;
+
+                    showQuestion();
+
+                };
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   UPDATE GAME SCORE
+   ========================================================= */
+
+function updateGameScore() {
 
     const gameScoreDisplay =
         $("gameScore");
@@ -1955,25 +2377,6 @@ function answerQuestion(selectedIndex) {
 
     }
 
-
-    if (isCorrect) {
-
-        addEcoPoints(10);
-
-    }
-
-
-    setTimeout(
-        () => {
-
-            currentQuestion++;
-
-            showQuestion();
-
-        },
-        1800
-    );
-
 }
 
 
@@ -1981,13 +2384,19 @@ function answerQuestion(selectedIndex) {
    FINISH GAME
    ========================================================= */
 
-/* =========================================================
-   FINISH GAME
-   ========================================================= */
-
 function finishGame() {
 
-    gameStarted = false;
+    console.log(
+        "🏆 GAME TAMAT"
+    );
+
+
+    gameStarted =
+        false;
+
+    answerLocked =
+        true;
+
 
     const gamePlay =
         $("gamePlay");
@@ -2004,38 +2413,60 @@ function finishGame() {
     const resultMessage =
         $("resultMessage");
 
-    /* HIDE GAME */
+    const correctCount =
+        $("correctCount");
+
+
+    /* Hide game */
 
     if (gamePlay) {
 
-        gamePlay.classList.add("hidden");
+        gamePlay.classList.add(
+            "hidden"
+        );
 
         gamePlay.style.display =
             "none";
 
     }
 
-    /* SHOW RESULT */
+
+    /* Show result */
 
     if (gameResult) {
 
-        gameResult.classList.remove("hidden");
+        gameResult.classList.remove(
+            "hidden"
+        );
 
         gameResult.style.display =
             "block";
 
     }
 
-    /* FINAL SCORE */
+
+    /* Final score */
 
     if (finalScore) {
 
         finalScore.textContent =
-            gameScore + " / 150";
+            gameScore +
+            " / 150";
 
     }
 
-    /* FINAL RANK */
+
+    /* Correct answers */
+
+    if (correctCount) {
+
+        correctCount.textContent =
+            correctAnswers;
+
+    }
+
+
+    /* Rank */
 
     if (finalRank) {
 
@@ -2044,7 +2475,8 @@ function finishGame() {
 
     }
 
-    /* RESULT MESSAGE */
+
+    /* Result message */
 
     if (resultMessage) {
 
@@ -2078,39 +2510,21 @@ function finishGame() {
 
     }
 
+
     updateEcoDisplay();
 
 }
+
+
 /* =========================================================
    RESTART GAME
    ========================================================= */
 
 function restartGame() {
 
-    const gameResult =
-        $("gameResult");
-
-    const gameStart =
-        $("gameStart");
-
-
-  if (gameResult) {
-
-    gameResult.classList.add("hidden");
-
-    gameResult.style.display =
-        "none";
-
-}
-
-if (gameStart) {
-
-    gameStart.classList.remove("hidden");
-
-    gameStart.style.display =
-        "block";
-
-}
+    console.log(
+        "🔄 RESTART GAME"
+    );
 
 
     gameScore =
@@ -2118,6 +2532,70 @@ if (gameStart) {
 
     currentQuestion =
         0;
+
+    correctAnswers =
+        0;
+
+    gameStarted =
+        false;
+
+    answerLocked =
+        false;
+
+
+    const gameResult =
+        $("gameResult");
+
+    const gameStart =
+        $("gameStart");
+
+    const gamePlay =
+        $("gamePlay");
+
+
+    /* Hide result */
+
+    if (gameResult) {
+
+        gameResult.classList.add(
+            "hidden"
+        );
+
+        gameResult.style.display =
+            "none";
+
+    }
+
+
+    /* Hide gameplay */
+
+    if (gamePlay) {
+
+        gamePlay.classList.add(
+            "hidden"
+        );
+
+        gamePlay.style.display =
+            "none";
+
+    }
+
+
+    /* Show start screen */
+
+    if (gameStart) {
+
+        gameStart.classList.remove(
+            "hidden"
+        );
+
+        gameStart.style.display =
+            "block";
+
+    }
+
+
+    updateGameScore();
 
 }
 
