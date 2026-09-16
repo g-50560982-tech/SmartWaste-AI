@@ -1712,10 +1712,12 @@ function startGame() {
 
     if (gamePlay) {
 
-        gamePlay.style.display =
-            "block";
+    gamePlay.classList.remove("hidden");
 
-    }
+    gamePlay.style.display =
+        "block";
+
+}
 
 
     showQuestion();
@@ -2001,18 +2003,23 @@ function finishGame() {
         $("resultMessage");
 
 
-    if (gamePlay) {
+   if (gamePlay) {
 
-        gamePlay.style.display =
-            "none";
+    gamePlay.classList.add("hidden");
 
-    }
+    gamePlay.style.display =
+        "none";
 
+}
 
-    if (gameResult) {
+if (gameResult) {
 
-        gameResult.style.display =
-            "block";
+    gameResult.classList.remove("hidden");
+
+    gameResult.style.display =
+        "block";
+
+}
 
     }
 
@@ -2087,20 +2094,23 @@ function restartGame() {
         $("gameStart");
 
 
-    if (gameResult) {
+  if (gameResult) {
 
-        gameResult.style.display =
-            "none";
+    gameResult.classList.add("hidden");
 
-    }
+    gameResult.style.display =
+        "none";
 
+}
 
-    if (gameStart) {
+if (gameStart) {
 
-        gameStart.style.display =
-            "block";
+    gameStart.classList.remove("hidden");
 
-    }
+    gameStart.style.display =
+        "block";
+
+}
 
 
     gameScore =
