@@ -15,6 +15,7 @@ let video = null;
 let cameraStream = null;
 let cameraRunning = false;
 let facingMode = "environment";
+
 let lastPredictions = [];
 let scannerPointGiven = false;
 
@@ -24,30 +25,10 @@ let gameStarted = false;
 
 
 /* =========================================================
-   DOM ELEMENTS
+   HELPER
    ========================================================= */
 
 const $ = (id) => document.getElementById(id);
-
-const startCameraBtn = $("startCameraBtn");
-const scanBtn = $("scanBtn");
-const switchCameraBtn = $("switchCameraBtn");
-
-const webcamContainer = $("webcam-container");
-const cameraPlaceholder = $("cameraPlaceholder");
-
-const scannerResult = $("scannerResult");
-const predictionLabel = $("predictionLabel");
-const binRecommendation = $("binRecommendation");
-const confidenceText = $("confidenceText");
-const confidenceFill = $("confidenceFill");
-const smartTip = $("smartTip");
-const scannerPoints = $("scannerPoints");
-const scannerError = $("scannerError");
-
-const gameStart = $("gameStart");
-const gamePlay = $("gamePlay");
-const gameResult = $("gameResult");
 
 
 /* =========================================================
@@ -56,11 +37,15 @@ const gameResult = $("gameResult");
 
 document.addEventListener("DOMContentLoaded", () => {
 
+    console.log("SmartWaste AI loaded successfully.");
+
     updateEcoDisplay();
     loadTheme();
+
     setupNavigation();
     setupThemeToggle();
     setupBinCards();
+    setupScanner();
     setupGame();
 
 });
@@ -72,20 +57,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function setupNavigation() {
 
-    const navButtons = document.querySelectorAll("[data-section]");
+    const navButtons =
+        document.querySelectorAll("[data-section]");
+
+    console.log(
+        "Navigation buttons:",
+        navButtons.length
+    );
 
     navButtons.forEach(button => {
 
         button.addEventListener("click", () => {
 
-            const sectionId = button.dataset.section;
-            const section = $(sectionId);
+            const sectionId =
+                button.getAttribute("data-section");
+
+            const section =
+                document.getElementById(sectionId);
 
             if (section) {
+
                 section.scrollIntoView({
                     behavior: "smooth",
                     block: "start"
                 });
+
+                console.log(
+                    "Navigate to:",
+                    sectionId
+                );
+
+            } else {
+
+                console.warn(
+                    "Section tidak dijumpai:",
+                    sectionId
+                );
+
             }
 
         });
@@ -101,22 +109,30 @@ function setupNavigation() {
 
 function setupThemeToggle() {
 
-    const themeToggle = $("themeToggle");
+    const themeToggle =
+        $("themeToggle");
 
-    if (!themeToggle) return;
+    if (!themeToggle) {
+        console.warn("themeToggle tidak dijumpai.");
+        return;
+    }
 
-    themeToggle.addEventListener("click", () => {
+    themeToggle.addEventListener(
+        "click",
+        () => {
 
-        document.body.classList.toggle("dark");
+            document.body.classList.toggle("dark");
 
-        const isDark = document.body.classList.contains("dark");
+            const isDark =
+                document.body.classList.contains("dark");
 
-        localStorage.setItem(
-            "smartwaste-theme",
-            isDark ? "dark" : "light"
-        );
+            localStorage.setItem(
+                "smartwaste-theme",
+                isDark ? "dark" : "light"
+            );
 
-    });
+        }
+    );
 
 }
 
@@ -124,10 +140,14 @@ function setupThemeToggle() {
 function loadTheme() {
 
     const savedTheme =
-        localStorage.getItem("smartwaste-theme");
+        localStorage.getItem(
+            "smartwaste-theme"
+        );
 
     if (savedTheme === "dark") {
+
         document.body.classList.add("dark");
+
     }
 
 }
@@ -140,7 +160,9 @@ function loadTheme() {
 function getEcoPoints() {
 
     return Number(
-        localStorage.getItem("smartwaste-points") || 0
+        localStorage.getItem(
+            "smartwaste-points"
+        ) || 0
     );
 
 }
@@ -160,29 +182,38 @@ function setEcoPoints(points) {
 
 function addEcoPoints(points) {
 
-    const current = getEcoPoints();
+    const current =
+        getEcoPoints();
 
-    setEcoPoints(current + points);
+    setEcoPoints(
+        current + points
+    );
 
 }
 
 
 function updateEcoDisplay() {
 
-    const points = getEcoPoints();
+    const points =
+        getEcoPoints();
 
     const elements = [
+
         $("ecoPoints"),
         $("totalEcoPoints"),
         $("homeEcoPoints"),
         $("scannerEcoPoints"),
         $("gameEcoPoints")
+
     ];
 
     elements.forEach(element => {
 
         if (element) {
-            element.textContent = points;
+
+            element.textContent =
+                points;
+
         }
 
     });
@@ -197,15 +228,21 @@ function updateEcoDisplay() {
 function getRank(points) {
 
     if (points >= 130) {
+
         return "🏆 Eco Hero";
+
     }
 
     if (points >= 100) {
+
         return "🌍 Eco Champion";
+
     }
 
     if (points >= 60) {
+
         return "♻️ Eco Learner";
+
     }
 
     return "🌱 Eco Beginner";
@@ -214,36 +251,74 @@ function getRank(points) {
 
 
 /* =========================================================
-   LOAD TEACHABLE MACHINE MODEL
+   TEACHABLE MACHINE MODEL
    ========================================================= */
 
 async function loadModel() {
 
-    if (model) return true;
-
-    try {
-
-        scannerError.textContent =
-            "🧠 Memuatkan AI model...";
-
-        model = await tmImage.load(
-            MODEL_PATH + "model.json",
-            MODEL_PATH + "metadata.json"
-        );
-
-        console.log("SmartWaste AI model loaded.");
-
-        scannerError.textContent = "";
+    if (model) {
 
         return true;
 
-    } catch (error) {
+    }
 
-        console.error(error);
+    const scannerError =
+        $("scannerError");
+
+    try {
 
         if (scannerError) {
+
+            scannerError.textContent =
+                "🧠 Memuatkan AI model...";
+
+        }
+
+        if (typeof tmImage === "undefined") {
+
+            throw new Error(
+                "Teachable Machine library tidak dimuatkan."
+            );
+
+        }
+
+        model =
+            await tmImage.load(
+
+                MODEL_PATH + "model.json",
+
+                MODEL_PATH + "metadata.json"
+
+            );
+
+
+        console.log(
+            "SmartWaste AI model loaded successfully."
+        );
+
+
+        if (scannerError) {
+
+            scannerError.textContent = "";
+
+        }
+
+        return true;
+
+
+    } catch (error) {
+
+        console.error(
+            "Model error:",
+            error
+        );
+
+
+        if (scannerError) {
+
             scannerError.textContent =
                 "❌ Model AI tidak dapat dimuatkan. Sila semak folder model.";
+
         }
 
         return false;
@@ -254,17 +329,93 @@ async function loadModel() {
 
 
 /* =========================================================
+   SCANNER SETUP
+   ========================================================= */
+
+function setupScanner() {
+
+    const startCameraBtn =
+        $("startCameraBtn");
+
+    const scanBtn =
+        $("scanBtn");
+
+    const switchCameraBtn =
+        $("switchCameraBtn");
+
+
+    if (startCameraBtn) {
+
+        startCameraBtn.addEventListener(
+            "click",
+            startCamera
+        );
+
+    }
+
+
+    if (scanBtn) {
+
+        scanBtn.addEventListener(
+            "click",
+            scanWaste
+        );
+
+    }
+
+
+    if (switchCameraBtn) {
+
+        switchCameraBtn.addEventListener(
+            "click",
+            switchCamera
+        );
+
+    }
+
+
+    console.log(
+        "Scanner setup complete."
+    );
+
+}
+
+
+/* =========================================================
    CAMERA
    ========================================================= */
 
 async function startCamera() {
 
+    const startCameraBtn =
+        $("startCameraBtn");
+
+    const scanBtn =
+        $("scanBtn");
+
+    const switchCameraBtn =
+        $("switchCameraBtn");
+
+    const webcamContainer =
+        $("webcam-container");
+
+    const cameraPlaceholder =
+        $("cameraPlaceholder");
+
+
     try {
 
         clearScannerError();
 
-        if (!navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia) {
+
+        /* ---------------------------------------------
+           Check browser camera support
+           --------------------------------------------- */
+
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia
+        ) {
 
             throw new Error(
                 "Browser tidak menyokong akses kamera."
@@ -272,27 +423,35 @@ async function startCamera() {
 
         }
 
-        /* Stop camera lama dahulu */
+
+        /* ---------------------------------------------
+           Stop previous camera
+           --------------------------------------------- */
+
         stopCamera();
 
-        /*
-         * Kita guna getUserMedia secara terus.
-         * Ini mengelakkan masalah tmImage.Webcam.setup().
-         */
+
+        /* ---------------------------------------------
+           Direct camera access
+           --------------------------------------------- */
 
         cameraStream =
             await navigator.mediaDevices.getUserMedia({
 
                 video: {
+
                     facingMode: {
                         ideal: facingMode
                     },
+
                     width: {
                         ideal: 640
                     },
+
                     height: {
                         ideal: 480
                     }
+
                 },
 
                 audio: false
@@ -300,81 +459,133 @@ async function startCamera() {
             });
 
 
-        /* =================================================
-           CREATE VIDEO ELEMENT
-           ================================================= */
-
-        if (!video) {
-
-            video = document.createElement("video");
-
-            video.id = "smartwaste-video";
-
-            video.autoplay = true;
-            video.playsInline = true;
-            video.muted = true;
-
-            video.setAttribute(
-                "playsinline",
-                ""
-            );
-
-            video.style.width = "100%";
-            video.style.height = "auto";
-            video.style.display = "block";
-            video.style.borderRadius = "20px";
-
-        }
+        console.log(
+            "Camera permission OK."
+        );
 
 
-        video.srcObject = cameraStream;
+        /* ---------------------------------------------
+           Create video
+           --------------------------------------------- */
+
+        video =
+            document.createElement("video");
+
+
+        video.id =
+            "smartwaste-video";
+
+
+        video.autoplay =
+            true;
+
+
+        video.playsInline =
+            true;
+
+
+        video.muted =
+            true;
+
+
+        video.setAttribute(
+            "playsinline",
+            ""
+        );
+
+
+        video.style.width =
+            "100%";
+
+
+        video.style.height =
+            "auto";
+
+
+        video.style.display =
+            "block";
+
+
+        video.style.borderRadius =
+            "20px";
+
+
+        video.srcObject =
+            cameraStream;
+
+
+        /* ---------------------------------------------
+           Put video inside container
+           --------------------------------------------- */
 
         if (webcamContainer) {
 
             webcamContainer.innerHTML = "";
 
-            webcamContainer.appendChild(video);
+            webcamContainer.appendChild(
+                video
+            );
 
         }
 
 
         await video.play();
 
-        cameraRunning = true;
+
+        cameraRunning =
+            true;
 
 
-        /* =================================================
-           BUTTON STATES
-           ================================================= */
+        /* ---------------------------------------------
+           Button states
+           --------------------------------------------- */
 
         if (startCameraBtn) {
 
             startCameraBtn.textContent =
                 "📷 Kamera Aktif";
 
-            startCameraBtn.disabled = true;
+            startCameraBtn.disabled =
+                true;
 
         }
+
 
         if (scanBtn) {
-            scanBtn.disabled = false;
+
+            scanBtn.disabled =
+                false;
+
         }
 
+
         if (switchCameraBtn) {
-            switchCameraBtn.disabled = false;
+
+            switchCameraBtn.disabled =
+                false;
+
         }
 
 
         if (cameraPlaceholder) {
-            cameraPlaceholder.style.display = "none";
+
+            cameraPlaceholder.style.display =
+                "none";
+
         }
 
 
-        /* Load AI model */
+        /* ---------------------------------------------
+           Load AI
+           --------------------------------------------- */
+
         await loadModel();
 
 
-        console.log("Camera started successfully.");
+        console.log(
+            "Camera started successfully."
+        );
+
 
     } catch (error) {
 
@@ -383,9 +594,14 @@ async function startCamera() {
             error
         );
 
-        cameraRunning = false;
 
-        showCameraError(error);
+        cameraRunning =
+            false;
+
+
+        showCameraError(
+            error
+        );
 
     }
 
@@ -393,50 +609,72 @@ async function startCamera() {
 
 
 /* =========================================================
-   CAMERA ERROR HANDLER
+   CAMERA ERROR
    ========================================================= */
 
 function showCameraError(error) {
 
+    const scannerError =
+        $("scannerError");
+
     let message =
         "❌ Kamera tidak dapat digunakan.";
 
-    if (error.name === "NotAllowedError") {
+
+    if (
+        error &&
+        error.name === "NotAllowedError"
+    ) {
 
         message =
             "❌ Akses kamera ditolak. Sila benarkan kamera untuk laman ini.";
 
     }
 
-    else if (error.name === "NotFoundError") {
+    else if (
+        error &&
+        error.name === "NotFoundError"
+    ) {
 
         message =
             "❌ Kamera tidak dijumpai pada peranti.";
 
     }
 
-    else if (error.name === "NotReadableError") {
+    else if (
+        error &&
+        error.name === "NotReadableError"
+    ) {
 
         message =
             "❌ Kamera sedang digunakan oleh aplikasi lain.";
 
     }
 
-    else if (error.name === "OverconstrainedError") {
+    else if (
+        error &&
+        error.name === "OverconstrainedError"
+    ) {
 
         message =
             "❌ Tetapan kamera tidak disokong. Cuba kamera lain.";
 
     }
 
-    else if (error.name === "SecurityError") {
+    else if (
+        error &&
+        error.name === "SecurityError"
+    ) {
 
         message =
             "❌ Browser menyekat akses kamera atas sebab keselamatan.";
 
     }
 
-    else if (error.message) {
+    else if (
+        error &&
+        error.message
+    ) {
 
         message =
             "❌ " + error.message;
@@ -445,7 +683,10 @@ function showCameraError(error) {
 
 
     if (scannerError) {
-        scannerError.textContent = message;
+
+        scannerError.textContent =
+            message;
+
     }
 
 }
@@ -461,20 +702,28 @@ function stopCamera() {
 
         cameraStream
             .getTracks()
-            .forEach(track => track.stop());
+            .forEach(track => {
 
-        cameraStream = null;
+                track.stop();
+
+            });
+
+        cameraStream =
+            null;
 
     }
 
-    cameraRunning = false;
+
+    cameraRunning =
+        false;
 
 
     if (video) {
 
         video.pause();
 
-        video.srcObject = null;
+        video.srcObject =
+            null;
 
     }
 
@@ -495,6 +744,7 @@ async function switchCamera() {
 
     }
 
+
     facingMode =
         facingMode === "environment"
             ? "user"
@@ -507,30 +757,6 @@ async function switchCamera() {
 
 
 /* =========================================================
-   CAMERA BUTTON EVENTS
-   ========================================================= */
-
-if (startCameraBtn) {
-
-    startCameraBtn.addEventListener(
-        "click",
-        startCamera
-    );
-
-}
-
-
-if (switchCameraBtn) {
-
-    switchCameraBtn.addEventListener(
-        "click",
-        switchCamera
-    );
-
-}
-
-
-/* =========================================================
    SCAN WASTE
    ========================================================= */
 
@@ -538,7 +764,40 @@ async function scanWaste() {
 
     clearScannerError();
 
-    if (!cameraRunning || !video) {
+
+    const videoElement =
+        video;
+
+    const scannerResult =
+        $("scannerResult");
+
+    const predictionLabel =
+        $("predictionLabel");
+
+    const binRecommendation =
+        $("binRecommendation");
+
+    const confidenceText =
+        $("confidenceText");
+
+    const confidenceFill =
+        $("confidenceFill");
+
+    const smartTip =
+        $("smartTip");
+
+    const scannerPoints =
+        $("scannerPoints");
+
+
+    /* ---------------------------------------------
+       Check camera
+       --------------------------------------------- */
+
+    if (
+        !cameraRunning ||
+        !videoElement
+    ) {
 
         showScannerMessage(
             "📷 Sila hidupkan kamera terlebih dahulu."
@@ -549,19 +808,29 @@ async function scanWaste() {
     }
 
 
+    /* ---------------------------------------------
+       Check model
+       --------------------------------------------- */
+
     if (!model) {
 
         const loaded =
             await loadModel();
 
-        if (!loaded) return;
+        if (!loaded) {
+
+            return;
+
+        }
 
     }
 
 
     try {
 
-        if (video.readyState < 2) {
+        if (
+            videoElement.readyState < 2
+        ) {
 
             showScannerMessage(
                 "⏳ Kamera sedang disediakan..."
@@ -572,17 +841,20 @@ async function scanWaste() {
         }
 
 
-        /*
-         * Teachable Machine boleh menerima HTMLVideoElement
-         * sebagai input prediction.
-         */
+        /* ---------------------------------------------
+           AI Prediction
+           --------------------------------------------- */
 
         const predictions =
-            await model.predict(video);
+            await model.predict(
+                videoElement
+            );
 
 
-        if (!predictions ||
-            predictions.length === 0) {
+        if (
+            !predictions ||
+            predictions.length === 0
+        ) {
 
             showScannerMessage(
                 "⚠️ AI tidak dapat mengenal pasti objek."
@@ -593,10 +865,14 @@ async function scanWaste() {
         }
 
 
-        /* Susun dari confidence tertinggi */
+        /* ---------------------------------------------
+           Sort highest probability
+           --------------------------------------------- */
+
         predictions.sort(
             (a, b) =>
-                b.probability - a.probability
+                b.probability -
+                a.probability
         );
 
 
@@ -607,6 +883,7 @@ async function scanWaste() {
         const label =
             best.className;
 
+
         const probability =
             best.probability;
 
@@ -616,27 +893,33 @@ async function scanWaste() {
 
 
         const info =
-            getClassInfo(label);
+            getClassInfo(
+                label
+            );
 
 
-        /* Simpan prediction */
         lastPredictions =
             predictions;
 
 
-        /* =================================================
-           DISPLAY RESULT
-           ================================================= */
+        /* ---------------------------------------------
+           Show result
+           --------------------------------------------- */
 
         if (scannerResult) {
-            scannerResult.style.display = "block";
+
+            scannerResult.style.display =
+                "block";
+
         }
 
 
         if (predictionLabel) {
 
             predictionLabel.textContent =
-                info.emoji + " " + info.displayName;
+                info.emoji +
+                " " +
+                info.displayName;
 
         }
 
@@ -644,15 +927,38 @@ async function scanWaste() {
         if (binRecommendation) {
 
             binRecommendation.textContent =
-                info.binEmoji + " " + info.bin;
+                info.binEmoji +
+                " " +
+                info.bin;
 
         }
 
 
         if (confidenceText) {
 
-            confidenceText.textContent =
-                percentage.toFixed(2) + "%";
+            if (percentage >= 80) {
+
+                confidenceText.textContent =
+                    percentage.toFixed(2) +
+                    "% • Sangat yakin";
+
+            }
+
+            else if (percentage >= 60) {
+
+                confidenceText.textContent =
+                    percentage.toFixed(2) +
+                    "% • Yakin";
+
+            }
+
+            else {
+
+                confidenceText.textContent =
+                    percentage.toFixed(2) +
+                    "% • Cuba imbas semula";
+
+            }
 
         }
 
@@ -676,50 +982,9 @@ async function scanWaste() {
         }
 
 
-        /* =================================================
-           CONFIDENCE MESSAGE
-           ================================================= */
-
-        if (percentage >= 80) {
-
-            if (confidenceText) {
-                confidenceText.textContent =
-                    percentage.toFixed(2) +
-                    "% • Sangat yakin";
-            }
-
-        }
-
-        else if (percentage >= 60) {
-
-            if (confidenceText) {
-                confidenceText.textContent =
-                    percentage.toFixed(2) +
-                    "% • Yakin";
-            }
-
-        }
-
-        else {
-
-            if (confidenceText) {
-                confidenceText.textContent =
-                    percentage.toFixed(2) +
-                    "% • Cuba imbas semula";
-            }
-
-        }
-
-
-        /* =================================================
-           ECO POINT
-           ================================================= */
-
-        /*
-         * +10 hanya sekali untuk satu sesi halaman.
-         * Ini mengelakkan pengguna mendapat point tanpa had
-         * dengan mengimbas objek yang sama berulang kali.
-         */
+        /* ---------------------------------------------
+           Eco Points
+           --------------------------------------------- */
 
         if (
             percentage >= 60 &&
@@ -728,7 +993,9 @@ async function scanWaste() {
 
             addEcoPoints(10);
 
-            scannerPointGiven = true;
+            scannerPointGiven =
+                true;
+
 
             if (scannerPoints) {
 
@@ -757,25 +1024,12 @@ async function scanWaste() {
             error
         );
 
+
         showScannerMessage(
             "❌ AI gagal menganalisis objek."
         );
 
     }
-
-}
-
-
-/* =========================================================
-   SCAN BUTTON
-   ========================================================= */
-
-if (scanBtn) {
-
-    scanBtn.addEventListener(
-        "click",
-        scanWaste
-    );
 
 }
 
@@ -792,9 +1046,9 @@ function getClassInfo(label) {
             .trim();
 
 
-    /* =====================================================
+    /* ---------------------------------------------
        PLASTIC
-       ===================================================== */
+       --------------------------------------------- */
 
     if (
         text.includes("plastic") ||
@@ -803,15 +1057,20 @@ function getClassInfo(label) {
 
         return {
 
-            displayName: "Plastik",
+            displayName:
+                "Plastik",
 
-            emoji: "🧴",
+            emoji:
+                "🧴",
 
-            bin: "Tong Oren",
+            bin:
+                "Tong Oren",
 
-            binEmoji: "🟧",
+            binEmoji:
+                "🟧",
 
-            binColor: "orange",
+            binColor:
+                "orange",
 
             tip:
                 "Asingkan plastik daripada sisa lain dan pastikan ia kosong sebelum dikitar semula."
@@ -821,9 +1080,9 @@ function getClassInfo(label) {
     }
 
 
-    /* =====================================================
+    /* ---------------------------------------------
        PAPER
-       ===================================================== */
+       --------------------------------------------- */
 
     if (
         text.includes("paper") ||
@@ -832,15 +1091,20 @@ function getClassInfo(label) {
 
         return {
 
-            displayName: "Kertas",
+            displayName:
+                "Kertas",
 
-            emoji: "📄",
+            emoji:
+                "📄",
 
-            bin: "Tong Biru",
+            bin:
+                "Tong Biru",
 
-            binEmoji: "🔵",
+            binEmoji:
+                "🔵",
 
-            binColor: "blue",
+            binColor:
+                "blue",
 
             tip:
                 "Asingkan kertas daripada plastik dan sisa makanan. Kertas yang bersih lebih mudah dikitar semula."
@@ -850,9 +1114,9 @@ function getClassInfo(label) {
     }
 
 
-    /* =====================================================
-       METAL / TIN / ALUMINIUM
-       ===================================================== */
+    /* ---------------------------------------------
+       METAL / TIN
+       --------------------------------------------- */
 
     if (
         text.includes("metal") ||
@@ -869,13 +1133,17 @@ function getClassInfo(label) {
             displayName:
                 "Tin Aluminium / Metal",
 
-            emoji: "🥫",
+            emoji:
+                "🥫",
 
-            bin: "Tong Oren",
+            bin:
+                "Tong Oren",
 
-            binEmoji: "🟧",
+            binEmoji:
+                "🟧",
 
-            binColor: "orange",
+            binColor:
+                "orange",
 
             tip:
                 "Kosongkan tin atau bekas logam sebelum dimasukkan ke tong kitar semula."
@@ -885,9 +1153,9 @@ function getClassInfo(label) {
     }
 
 
-    /* =====================================================
+    /* ---------------------------------------------
        GLASS
-       ===================================================== */
+       --------------------------------------------- */
 
     if (
         text.includes("glass") ||
@@ -896,15 +1164,20 @@ function getClassInfo(label) {
 
         return {
 
-            displayName: "Kaca",
+            displayName:
+                "Kaca",
 
-            emoji: "🍾",
+            emoji:
+                "🍾",
 
-            bin: "Tong Coklat",
+            bin:
+                "Tong Coklat",
 
-            binEmoji: "🟫",
+            binEmoji:
+                "🟫",
 
-            binColor: "brown",
+            binColor:
+                "brown",
 
             tip:
                 "Kendalikan kaca dengan berhati-hati. Asingkan kaca daripada sisa lain."
@@ -914,21 +1187,26 @@ function getClassInfo(label) {
     }
 
 
-    /* =====================================================
+    /* ---------------------------------------------
        UNKNOWN
-       ===================================================== */
+       --------------------------------------------- */
 
     return {
 
-        displayName: label,
+        displayName:
+            label,
 
-        emoji: "❓",
+        emoji:
+            "❓",
 
-        bin: "Tidak dapat ditentukan",
+        bin:
+            "Tidak dapat ditentukan",
 
-        binEmoji: "♻️",
+        binEmoji:
+            "♻️",
 
-        binColor: "green",
+        binColor:
+            "green",
 
         tip:
             "Cuba letakkan objek di hadapan kamera dengan pencahayaan yang baik dan imbas semula."
@@ -944,8 +1222,14 @@ function getClassInfo(label) {
 
 function showScannerMessage(message) {
 
+    const scannerError =
+        $("scannerError");
+
     if (scannerError) {
-        scannerError.textContent = message;
+
+        scannerError.textContent =
+            message;
+
     }
 
 }
@@ -953,8 +1237,14 @@ function showScannerMessage(message) {
 
 function clearScannerError() {
 
+    const scannerError =
+        $("scannerError");
+
     if (scannerError) {
-        scannerError.textContent = "";
+
+        scannerError.textContent =
+            "";
+
     }
 
 }
@@ -979,11 +1269,15 @@ function setupBinCards() {
             () => {
 
                 binCards.forEach(
-                    item =>
+                    item => {
+
                         item.classList.remove(
                             "active"
-                        )
+                        );
+
+                    }
                 );
+
 
                 card.classList.add(
                     "active"
@@ -1014,10 +1308,12 @@ const questions = [
             "🗑️ Tong Sampah Biasa"
         ],
 
-        correct: 0,
+        correct:
+            0,
 
         tip:
             "Kertas diletakkan di Tong Biru."
+
     },
 
 
@@ -1032,10 +1328,12 @@ const questions = [
             "Logam"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "Botol plastik termasuk dalam kategori plastik."
+
     },
 
 
@@ -1050,10 +1348,12 @@ const questions = [
             "Tiada tong"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "Tin aluminium atau logam dimasukkan ke Tong Oren."
+
     },
 
 
@@ -1068,10 +1368,12 @@ const questions = [
             "Tong sampah biasa"
         ],
 
-        correct: 2,
+        correct:
+            2,
 
         tip:
             "Kaca diletakkan di Tong Coklat."
+
     },
 
 
@@ -1086,10 +1388,12 @@ const questions = [
             "Supaya membazir"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "Pengasingan sisa membantu proses kitar semula."
+
     },
 
 
@@ -1104,10 +1408,12 @@ const questions = [
             "Tin aluminium"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "Botol plastik ialah contoh sisa plastik."
+
     },
 
 
@@ -1122,10 +1428,12 @@ const questions = [
             "Merah"
         ],
 
-        correct: 0,
+        correct:
+            0,
 
         tip:
             "Tong Biru digunakan untuk kertas."
+
     },
 
 
@@ -1140,10 +1448,12 @@ const questions = [
             "Hijau"
         ],
 
-        correct: 2,
+        correct:
+            2,
 
         tip:
             "Tong Coklat digunakan untuk kaca."
+
     },
 
 
@@ -1158,10 +1468,12 @@ const questions = [
             "Kaca"
         ],
 
-        correct: 2,
+        correct:
+            2,
 
         tip:
             "Tin minuman ialah sisa logam."
+
     },
 
 
@@ -1176,10 +1488,12 @@ const questions = [
             "Pecahkan semua bekas"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "Bekas yang kosong dan bersih lebih sesuai untuk dikitar semula."
+
     },
 
 
@@ -1194,10 +1508,12 @@ const questions = [
             "Membuang sampah merata-rata"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "AI membantu mengenal pasti jenis sisa melalui imej."
+
     },
 
 
@@ -1212,10 +1528,12 @@ const questions = [
             "Meninggalkan sampah"
         ],
 
-        correct: 0,
+        correct:
+            0,
 
         tip:
             "Kitar semula membantu mengurangkan jumlah sisa."
+
     },
 
 
@@ -1230,10 +1548,12 @@ const questions = [
             "SDG 17"
         ],
 
-        correct: 2,
+        correct:
+            2,
 
         tip:
             "SDG 12 ialah Penggunaan dan Pengeluaran Bertanggungjawab."
+
     },
 
 
@@ -1248,10 +1568,12 @@ const questions = [
             "Menggunakan lebih banyak plastik"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "Pengasingan sisa ialah salah satu amalan baik untuk alam sekitar."
+
     },
 
 
@@ -1266,10 +1588,12 @@ const questions = [
             "Menghapuskan tong sampah"
         ],
 
-        correct: 1,
+        correct:
+            1,
 
         tip:
             "SmartWaste AI menggabungkan AI dan pendidikan untuk membantu murid mengenal pasti serta mengasingkan sisa."
+
     }
 
 ];
@@ -1284,6 +1608,10 @@ function setupGame() {
     const startButton =
         $("startGameBtn");
 
+    const restartButton =
+        $("restartGameBtn");
+
+
     if (startButton) {
 
         startButton.addEventListener(
@@ -1292,6 +1620,21 @@ function setupGame() {
         );
 
     }
+
+
+    if (restartButton) {
+
+        restartButton.addEventListener(
+            "click",
+            restartGame
+        );
+
+    }
+
+
+    console.log(
+        "Game setup complete."
+    );
 
 }
 
@@ -1302,21 +1645,47 @@ function setupGame() {
 
 function startGame() {
 
-    gameScore = 0;
-    currentQuestion = 0;
-    gameStarted = true;
+    gameScore =
+        0;
+
+    currentQuestion =
+        0;
+
+    gameStarted =
+        true;
+
+
+    const gameStart =
+        $("gameStart");
+
+    const gamePlay =
+        $("gamePlay");
+
+    const gameResult =
+        $("gameResult");
 
 
     if (gameStart) {
-        gameStart.style.display = "none";
+
+        gameStart.style.display =
+            "none";
+
     }
+
 
     if (gameResult) {
-        gameResult.style.display = "none";
+
+        gameResult.style.display =
+            "none";
+
     }
 
+
     if (gamePlay) {
-        gamePlay.style.display = "block";
+
+        gamePlay.style.display =
+            "block";
+
     }
 
 
@@ -1333,6 +1702,7 @@ function showQuestion() {
 
     const question =
         questions[currentQuestion];
+
 
     if (!question) {
 
@@ -1356,6 +1726,12 @@ function showQuestion() {
     const answerContainer =
         $("answerContainer");
 
+    const gameFeedback =
+        $("gameFeedback");
+
+    const gameScoreDisplay =
+        $("gameScore");
+
 
     if (questionText) {
 
@@ -1373,28 +1749,56 @@ function showQuestion() {
     }
 
 
+    if (gameScoreDisplay) {
+
+        gameScoreDisplay.textContent =
+            gameScore;
+
+    }
+
+
+    if (gameFeedback) {
+
+        gameFeedback.textContent =
+            "";
+
+    }
+
+
     if (answerContainer) {
 
-        answerContainer.innerHTML = "";
+        answerContainer.innerHTML =
+            "";
 
 
         question.answers.forEach(
             (answer, index) => {
 
                 const button =
-                    document.createElement("button");
+                    document.createElement(
+                        "button"
+                    );
+
 
                 button.className =
                     "answer-btn";
 
+
                 button.textContent =
                     answer;
 
+
                 button.addEventListener(
                     "click",
-                    () =>
-                        answerQuestion(index)
+                    () => {
+
+                        answerQuestion(
+                            index
+                        );
+
+                    }
                 );
+
 
                 answerContainer.appendChild(
                     button
@@ -1402,25 +1806,6 @@ function showQuestion() {
 
             }
         );
-
-    }
-
-
-    const gameFeedback =
-        $("gameFeedback");
-
-    if (gameFeedback) {
-        gameFeedback.textContent = "";
-    }
-
-
-    const gameScoreDisplay =
-        $("gameScore");
-
-    if (gameScoreDisplay) {
-
-        gameScoreDisplay.textContent =
-            gameScore;
 
     }
 
@@ -1437,6 +1822,13 @@ function answerQuestion(selectedIndex) {
         questions[currentQuestion];
 
 
+    if (!question) {
+
+        return;
+
+    }
+
+
     const answerButtons =
         document.querySelectorAll(
             ".answer-btn"
@@ -1444,8 +1836,12 @@ function answerQuestion(selectedIndex) {
 
 
     answerButtons.forEach(
-        button =>
-            button.disabled = true
+        button => {
+
+            button.disabled =
+                true;
+
+        }
     );
 
 
@@ -1453,18 +1849,23 @@ function answerQuestion(selectedIndex) {
         $("gameFeedback");
 
 
-    if (
+    const isCorrect =
         selectedIndex ===
-        question.correct
-    ) {
+        question.correct;
 
-        gameScore += 10;
+
+    if (isCorrect) {
+
+        gameScore +=
+            10;
 
 
         if (answerButtons[selectedIndex]) {
 
             answerButtons[selectedIndex]
-                .classList.add("correct");
+                .classList.add(
+                    "correct"
+                );
 
         }
 
@@ -1484,7 +1885,9 @@ function answerQuestion(selectedIndex) {
         if (answerButtons[selectedIndex]) {
 
             answerButtons[selectedIndex]
-                .classList.add("wrong");
+                .classList.add(
+                    "wrong"
+                );
 
         }
 
@@ -1492,7 +1895,9 @@ function answerQuestion(selectedIndex) {
         if (answerButtons[question.correct]) {
 
             answerButtons[question.correct]
-                .classList.add("correct");
+                .classList.add(
+                    "correct"
+                );
 
         }
 
@@ -1511,6 +1916,7 @@ function answerQuestion(selectedIndex) {
     const gameScoreDisplay =
         $("gameScore");
 
+
     if (gameScoreDisplay) {
 
         gameScoreDisplay.textContent =
@@ -1519,23 +1925,23 @@ function answerQuestion(selectedIndex) {
     }
 
 
-    setEcoPoints(
-        getEcoPoints() +
-        (
-            selectedIndex === question.correct
-                ? 10
-                : 0
-        )
+    if (isCorrect) {
+
+        addEcoPoints(10);
+
+    }
+
+
+    setTimeout(
+        () => {
+
+            currentQuestion++;
+
+            showQuestion();
+
+        },
+        1800
     );
-
-
-    setTimeout(() => {
-
-        currentQuestion++;
-
-        showQuestion();
-
-    }, 1800);
 
 }
 
@@ -1546,17 +1952,15 @@ function answerQuestion(selectedIndex) {
 
 function finishGame() {
 
-    gameStarted = false;
+    gameStarted =
+        false;
 
 
-    if (gamePlay) {
-        gamePlay.style.display = "none";
-    }
+    const gamePlay =
+        $("gamePlay");
 
-    if (gameResult) {
-        gameResult.style.display = "block";
-    }
-
+    const gameResult =
+        $("gameResult");
 
     const finalScore =
         $("finalScore");
@@ -1564,11 +1968,31 @@ function finishGame() {
     const finalRank =
         $("finalRank");
 
+    const resultMessage =
+        $("resultMessage");
+
+
+    if (gamePlay) {
+
+        gamePlay.style.display =
+            "none";
+
+    }
+
+
+    if (gameResult) {
+
+        gameResult.style.display =
+            "block";
+
+    }
+
 
     if (finalScore) {
 
         finalScore.textContent =
-            gameScore + " / 150";
+            gameScore +
+            " / 150";
 
     }
 
@@ -1576,13 +2000,11 @@ function finishGame() {
     if (finalRank) {
 
         finalRank.textContent =
-            getRank(gameScore);
+            getRank(
+                gameScore
+            );
 
     }
-
-
-    const resultMessage =
-        $("resultMessage");
 
 
     if (resultMessage) {
@@ -1627,28 +2049,36 @@ function finishGame() {
    RESTART GAME
    ========================================================= */
 
-const restartGameBtn =
-    $("restartGameBtn");
+function restartGame() {
+
+    const gameResult =
+        $("gameResult");
+
+    const gameStart =
+        $("gameStart");
 
 
-if (restartGameBtn) {
+    if (gameResult) {
 
-    restartGameBtn.addEventListener(
-        "click",
-        () => {
+        gameResult.style.display =
+            "none";
 
-            if (gameResult) {
-                gameResult.style.display =
-                    "none";
-            }
+    }
 
-            if (gameStart) {
-                gameStart.style.display =
-                    "block";
-            }
 
-        }
-    );
+    if (gameStart) {
+
+        gameStart.style.display =
+            "block";
+
+    }
+
+
+    gameScore =
+        0;
+
+    currentQuestion =
+        0;
 
 }
 
