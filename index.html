@@ -548,178 +548,184 @@
 
   <div class="section-heading">
 
-    <span class="section-icon">🎮</span>
+```
+<span class="section-icon">🎮</span>
 
-    <h2>WASTE CHALLENGE</h2>
+<h2>WASTE CHALLENGE</h2>
 
-    <p>
-      Test Your Waste-Sorting Skills!
-    </p>
+<p>
+  Test Your Waste-Sorting Skills!
+</p>
+```
 
   </div>
-
 
   <!-- GAME START -->
 
   <div id="gameStart" class="game-start content-card">
 
-    <div class="game-icon">🎮</div>
+```
+<div class="game-icon">🎮</div>
 
-    <h3>Waste Challenge</h3>
+<h3>Waste Challenge</h3>
 
-    <p>
-      Jawab 15 soalan dan kumpul sebanyak mungkin
-      <strong>Eco Points</strong>.
-    </p>
+<p>
+  Jawab 15 soalan dan kumpul sebanyak mungkin
+  <strong>Eco Points</strong>.
+</p>
 
-    <div class="game-rules">
+<div class="game-rules">
 
-      <span>❓ 15 Soalan</span>
-      <span>⭐ +10 Mata</span>
-      <span>🏆 Maksimum 150</span>
+  <span>❓ 15 Soalan</span>
+  <span>⭐ +10 Mata</span>
+  <span>🏆 Maksimum 150</span>
 
-    </div>
+</div>
 
-    <button id="startGameBtn" class="primary-btn">
-      🚀 Mula Cabaran
-    </button>
+<button id="startGameBtn" class="primary-btn">
+  🚀 Mula Cabaran
+</button>
+```
 
   </div>
-
 
   <!-- GAME PLAY -->
 
   <div id="gamePlay" class="game-play hidden">
 
-    <div class="game-top">
+```
+<div class="game-top">
 
-      <div>
-        Soalan
-        <strong>
-          <span id="questionNumber">1</span>/15
-        </strong>
-      </div>
-
-      <div>
-        ⭐
-        <strong id="gamePoints">0</strong>
-      </div>
-
-    </div>
-
-
-    <div class="progress-container">
-
-      <div
-        id="questionProgress"
-        class="progress-fill"
-      ></div>
-
-    </div>
-
-
-    <div class="question-card">
-
-      <div
-        id="levelBadge"
-        class="level-badge"
-      >
-        🟢 LEVEL 1 — EASY
-      </div>
-
-      <h3 id="questionText">
-        Soalan akan muncul di sini.
-      </h3>
-
-      <div
-        id="answerOptions"
-        class="answer-options"
-      ></div>
-
-    </div>
-
-
-    <div
-      id="gameFeedback"
-      class="game-feedback hidden"
-    >
-
-      <h3 id="feedbackTitle"></h3>
-
-      <p id="feedbackText"></p>
-
-      <div id="feedbackTip"></div>
-
-      <div class="feedback-points">
-        <strong id="feedbackPoints"></strong>
-      </div>
-
-      <button
-        id="nextQuestionBtn"
-        class="primary-btn"
-      >
-        Seterusnya →
-      </button>
-
-    </div>
-
+  <div>
+    Soalan
+    <strong>
+      <span id="questionNumber">1</span>/15
+    </strong>
   </div>
 
+  <div>
+    ⭐
+    <strong id="gameScore">0</strong>
+  </div>
+
+</div>
+
+
+<div class="progress-container">
+
+  <div
+    id="questionProgress"
+    class="progress-fill"
+  ></div>
+
+</div>
+
+
+<div class="question-card">
+
+  <div
+    id="levelBadge"
+    class="level-badge"
+  >
+    🟢 LEVEL 1 — EASY
+  </div>
+
+  <h3 id="questionText">
+    Soalan akan muncul di sini.
+  </h3>
+
+  <div
+    id="answerContainer"
+    class="answer-options"
+  ></div>
+
+</div>
+
+
+<div
+  id="gameFeedback"
+  class="game-feedback hidden"
+>
+
+  <h3 id="feedbackTitle"></h3>
+
+  <p id="feedbackText"></p>
+
+  <div id="feedbackTip"></div>
+
+  <div class="feedback-points">
+    <strong id="feedbackPoints"></strong>
+  </div>
+
+  <button
+    id="nextQuestionBtn"
+    class="primary-btn"
+  >
+    Seterusnya →
+  </button>
+
+</div>
+```
+
+  </div>
 
   <!-- GAME RESULT -->
 
   <div id="gameResult" class="game-result hidden">
 
-    <div class="result-trophy">🏆</div>
+```
+<div class="result-trophy">🏆</div>
 
-    <h2>WELL DONE!</h2>
+<h2>WELL DONE!</h2>
 
-    <p class="result-label">ECO POINTS</p>
+<p class="result-label">ECO POINTS</p>
 
-    <div
-      id="finalPoints"
-      class="final-points"
-    >
-      0
-    </div>
+<div
+  id="finalScore"
+  class="final-points"
+>
+  0 / 150
+</div>
 
-    <div class="result-score">
+<div class="result-score">
 
-      <strong id="correctCount">0</strong>
-      <span>/ 15</span>
+  <strong id="correctCount">0</strong>
+  <span>/ 15</span>
 
-    </div>
+</div>
 
-    <div
-      id="ecoRank"
-      class="eco-rank"
-    >
-      🌱 ECO BEGINNER
-    </div>
+<div
+  id="finalRank"
+  class="eco-rank"
+>
+  🌱 Eco Beginner
+</div>
 
-    <p id="resultMessage"></p>
+<p id="resultMessage"></p>
 
-    <div class="result-buttons">
+<div class="result-buttons">
 
-      <button
-        id="playAgainBtn"
-        class="primary-btn"
-      >
-        🔄 Main Lagi
-      </button>
+  <button
+    id="restartGameBtn"
+    class="primary-btn"
+  >
+    🔄 Main Lagi
+  </button>
 
-      <button
-        class="secondary-btn"
-        data-go="scanner"
-      >
-        📷 Cuba AI Scanner
-      </button>
+  <button
+    class="secondary-btn"
+    data-go="scanner"
+  >
+    📷 Cuba AI Scanner
+  </button>
 
-    </div>
+</div>
+```
 
   </div>
 
 </section>
+
 
 
 <!-- =========================================================
