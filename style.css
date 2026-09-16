@@ -823,7 +823,39 @@ button:disabled {
 
   margin-bottom: 15px;
 }
+.bin-illustration {
+  font-size: 65px;
+  margin-bottom: 15px;
+}
 
+
+/* =========================================================
+   REAL RECYCLING BIN IMAGES
+========================================================= */
+
+.bin-image {
+  width: 100%;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.45);
+}
+
+.bin-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.bin-card:hover .bin-image img {
+  transform: scale(1.05);
+}
 .bin-card h3 {
 
   margin-bottom: 10px;
