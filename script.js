@@ -1981,11 +1981,13 @@ function answerQuestion(selectedIndex) {
    FINISH GAME
    ========================================================= */
 
+/* =========================================================
+   FINISH GAME
+   ========================================================= */
+
 function finishGame() {
 
-    gameStarted =
-        false;
-
+    gameStarted = false;
 
     const gamePlay =
         $("gamePlay");
@@ -2002,46 +2004,47 @@ function finishGame() {
     const resultMessage =
         $("resultMessage");
 
+    /* HIDE GAME */
 
-   if (gamePlay) {
+    if (gamePlay) {
 
-    gamePlay.classList.add("hidden");
+        gamePlay.classList.add("hidden");
 
-    gamePlay.style.display =
-        "none";
-
-}
-
-if (gameResult) {
-
-    gameResult.classList.remove("hidden");
-
-    gameResult.style.display =
-        "block";
-
-}
+        gamePlay.style.display =
+            "none";
 
     }
 
+    /* SHOW RESULT */
+
+    if (gameResult) {
+
+        gameResult.classList.remove("hidden");
+
+        gameResult.style.display =
+            "block";
+
+    }
+
+    /* FINAL SCORE */
 
     if (finalScore) {
 
         finalScore.textContent =
-            gameScore +
-            " / 150";
+            gameScore + " / 150";
 
     }
 
+    /* FINAL RANK */
 
     if (finalRank) {
 
         finalRank.textContent =
-            getRank(
-                gameScore
-            );
+            getRank(gameScore);
 
     }
 
+    /* RESULT MESSAGE */
 
     if (resultMessage) {
 
@@ -2075,12 +2078,9 @@ if (gameResult) {
 
     }
 
-
     updateEcoDisplay();
 
 }
-
-
 /* =========================================================
    RESTART GAME
    ========================================================= */
